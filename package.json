@@ -1,6 +1,6 @@
 {
   "name": "vimcode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vim keybindings for the OpenCode prompt",
   "author": "Ori Bar-ilan",
   "license": "MIT",
@@ -17,23 +17,20 @@
     "plugin"
   ],
   "exports": {
-    ".": "./src/index.tsx",
     "./tui": "./src/index.tsx"
   },
   "files": [
     "src/"
   ],
-  "peerDependencies": {
-    "@opencode-ai/plugin": "*",
-    "@opentui/core": "*",
-    "@opentui/keymap": "*",
-    "@opentui/solid": "*",
-    "solid-js": "*"
-  },
   "scripts": {
     "test": "bun test"
   },
   "devDependencies": {
+    "@opencode-ai/plugin": "*",
+    "@opentui/core": "*",
+    "@opentui/keymap": "*",
+    "@opentui/solid": "*",
+    "solid-js": "*",
     "tsx": "^4.22.1"
   }
 }
