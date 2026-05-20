@@ -87,6 +87,10 @@ Counts work here too: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 - Cursor shape -- no way to show a block cursor in normal mode
 - `yy` accuracy -- line position is tracked with a shadow counter that drifts on clicks and arrow keys
 
+## Overlay passthrough
+
+Vimcode disables itself when an overlay owns the keyboard: the command palette (`:` or Ctrl+P), session list (`/sessions`), question prompts, and permission prompts. Keys pass through to the overlay's own navigation so j/k/Enter/Escape work as expected.
+
 ## Known limitation: mode indicator in distributed installs
 
 OpenCode's TUI plugin system doesn't resolve host packages (`solid-js`, `@opentui/solid`) for externally installed plugins. vimcode uses dynamic `import()` with a fallback: when running from source (`just dev`), the colored mode indicator appears in the prompt bar. When installed via git or npm, imports fail silently and mode switches show a brief toast instead. This is an upstream limitation that affects all TUI plugins distributed via git or npm.
