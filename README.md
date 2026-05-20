@@ -10,7 +10,7 @@ In insert mode, typing works as usual. Enter inserts a newline (Ctrl+Enter submi
 
 Tab is a hack: the plugin API can't insert text at the cursor, so vimcode saves your clipboard, writes a tab to it, pastes, then restores your clipboard about 50ms later. Works fine but your clipboard briefly contains a tab character.
 
-In normal mode, keys are vim commands. Unrecognized keys get swallowed so you don't type into the prompt by accident.
+In normal mode, keys are vim commands. Unrecognized keys get swallowed so you don't type into the prompt by accident. Pressing `:` opens the command palette, just like vim's command mode.
 
 ## Install
 
@@ -89,7 +89,7 @@ Counts work here too: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 
 ## Overlay passthrough
 
-Vimcode disables itself when an overlay owns the keyboard: the command palette (`:` or Ctrl+P), session list (`/sessions`), question prompts, and permission prompts. Keys pass through to the overlay's own navigation so j/k/Enter/Escape work as expected.
+Vimcode temporarily disables itself whenever OpenCode shows its own interactive UI. This includes the command palette (`:` or Ctrl+P), slash commands like `/sessions`, the `@` file/agent picker, question prompts (when the AI asks you to choose), and permission prompts. While any of these are open, all keys pass straight through so j/k/Enter/Escape work as you'd expect. Vimcode resumes once the overlay closes.
 
 ## Known limitation: mode indicator in distributed installs
 
