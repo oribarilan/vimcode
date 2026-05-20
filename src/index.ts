@@ -93,6 +93,21 @@ const plugin: TuiPluginModule = {
       "key",
       (ctx) => {
         if (ctx.event.eventType === "release") return
+
+        // Let autocomplete handle Enter/Escape before vim consumes them.
+        // dispatchCommand returns { ok } — true when the autocomplete layer
+        // is active and handled the command, false when it's hidden/disabled.
+        if (state.mode === "insert") {
+          if (ctx.event.name === "escape") {
+            const r = api.keymap.dispatchCommand("prompt.autocomplete.hide")
+            if (r.ok) { ctx.consume(); return }
+          }
+          if (ctx.event.name === "return" && !ctx.event.ctrl) {
+            const r = api.keymap.dispatchCommand("prompt.autocomplete.select")
+            if (r.ok) { ctx.consume(); return }
+          }
+        }
+
         const key = translateKey(ctx.event)
         const result = state.mode === "insert"
           ? handleInsertKey(state, key, ctx.event)

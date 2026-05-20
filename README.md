@@ -6,7 +6,7 @@ Vim keybindings for the [OpenCode](https://opencode.ai) prompt. Early beta, thin
 
 Adds normal/insert mode to OpenCode's prompt input. Escape goes to normal mode, `i` goes back to insert. Mode switches show a brief toast notification.
 
-In insert mode, typing works as usual. Enter inserts a newline (Ctrl+Enter submits), Tab inserts a tab character, and Escape switches to normal.
+In insert mode, typing works as usual. Enter inserts a newline (Ctrl+Enter submits), Tab inserts a tab character, and Escape switches to normal. File picker and autocomplete work naturally: Enter picks the selected item and Escape closes the picker without leaving insert mode.
 
 Tab is a hack: the plugin API can't insert text at the cursor, so vimcode saves your clipboard, writes a tab to it, pastes, then restores your clipboard about 50ms later. Works fine but your clipboard briefly contains a tab character.
 
@@ -36,6 +36,8 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 | `G` | Buffer end |
 
 All motions take counts: `3j` moves down 3 lines.
+
+When the input is empty, `j`/`k` scroll through prompt history instead of moving the cursor (same as the up/down arrows).
 
 ### Operators
 
@@ -71,7 +73,8 @@ Counts work here too: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 | `:` | Open command palette |
 | `X` | Backspace |
 | `J` | Join current line with next |
-| `Enter` | Submit prompt (normal mode) |
+| `j` `k` | Cycle prompt history (when input is empty) |
+| `Enter` | Submit prompt |
 | `Escape` | Pass through for double-escape interrupt |
 
 ## What doesn't work (yet?)

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-20
+
+### Added
+
+- `Ctrl+Enter` submits the prompt from insert mode. Previously there was no way to submit without switching to normal mode first.
+- `j`/`k` in normal mode cycle through prompt history when the input is empty, matching the behavior of up/down arrow keys.
+
+### Fixed
+
+- File picker and autocomplete now work in insert mode. Enter picks the selected item and Escape closes the picker without leaving insert mode. Previously the vim intercept consumed both keys before the autocomplete layer could see them.
+
 ## [0.1.4] — 2026-05-20
 
 ### Added
@@ -66,7 +77,8 @@ First release. Brings modal editing to the OpenCode prompt — normal mode, inse
 
 > **Known limitations:** this is a v0 release. `g` fires immediately as buffer-home instead of waiting for `gg`. The line tracker used by `yy` drifts when the cursor moves via clicks or arrow keys. Visual mode and text objects aren't feasible without cursor position access from the plugin API.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/oribarilan/vimcode/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/oribarilan/vimcode/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/oribarilan/vimcode/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/oribarilan/vimcode/compare/v0.1.1...v0.1.2

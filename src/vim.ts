@@ -83,7 +83,10 @@ export function handleInsertKey(state: VimState, key: string, ev: KeyEvent): Han
     state.lineTracker = 0
     return { consume: true, actions: [{ type: "mode", mode: "normal" }] }
   }
-  if (ev.name === "return" && !ev.ctrl) {
+  if (ev.name === "return" && ev.ctrl) {
+    return { consume: true, actions: [{ type: "cmd", cmd: "input.submit" }] }
+  }
+  if (ev.name === "return") {
     return { consume: true, actions: [{ type: "cmd", cmd: "input.newline" }] }
   }
   if (ev.name === "tab") {
@@ -226,6 +229,11 @@ export function handleNormalKey(
   // Standalone motions
   if (key in MOTIONS) {
     const n = consumeCount(state)
+    if ((key === "j" || key === "k") && isInputEmpty(prompt)) {
+      const cmd = key === "k" ? "prompt.history.previous" : "prompt.history.next"
+      pushN(actions, cmd, n)
+      return { consume: true, actions }
+    }
     pushN(actions, MOTIONS[key], n)
     updateLineTracker(state, key, n, prompt)
     return { consume: true, actions }
@@ -316,4 +324,8 @@ function updateLineTracker(state: VimState, key: string, n: number, prompt: Prom
   else if (key === "k") state.lineTracker = Math.max(0, state.lineTracker - n)
   else if (key === "G") state.lineTracker = prompt.getLineCount() - 1
   else if (key === "g") state.lineTracker = 0
+}
+
+function isInputEmpty(prompt: PromptAccess): boolean {
+  return prompt.getLineCount() === 1 && prompt.getLine(0) === ""
 }

@@ -29,6 +29,11 @@ const mockPrompt: PromptAccess = {
   getLineCount: () => 3,
 }
 
+const emptyPrompt: PromptAccess = {
+  getLine: () => "",
+  getLineCount: () => 1,
+}
+
 let state: VimState
 
 beforeEach(() => {
@@ -80,9 +85,10 @@ describe("handleInsertKey", () => {
     expect(cmds(r.actions)).toContain("input.newline")
   })
 
-  it("ctrl+enter → passthrough", () => {
+  it("ctrl+enter → consume, input.submit", () => {
     const r = handleInsertKey(state, "return", ev("return", { ctrl: true }))
-    expect(r.consume).toBe(false)
+    expect(r.consume).toBe(true)
+    expect(cmds(r.actions)).toContain("input.submit")
   })
 
   it("tab → insert action with tab character", () => {
@@ -392,5 +398,40 @@ describe("handleNormalKey — line tracker", () => {
     state.lineTracker = 2
     handleNormalKey(state, "g", ev("g"), mockPrompt)
     expect(state.lineTracker).toBe(0)
+  })
+})
+
+// ── handleNormalKey — history scrolling ─────────────────────
+
+describe("handleNormalKey — history scrolling", () => {
+  it("j dispatches prompt.history.next when input is empty", () => {
+    const r = handleNormalKey(state, "j", ev("j"), emptyPrompt)
+    expect(cmds(r.actions)).toEqual(["prompt.history.next"])
+  })
+
+  it("k dispatches prompt.history.previous when input is empty", () => {
+    const r = handleNormalKey(state, "k", ev("k"), emptyPrompt)
+    expect(cmds(r.actions)).toEqual(["prompt.history.previous"])
+  })
+
+  it("j dispatches input.move.down when input is non-empty", () => {
+    const r = handleNormalKey(state, "j", ev("j"), mockPrompt)
+    expect(cmds(r.actions)).toEqual(["input.move.down"])
+  })
+
+  it("3k dispatches prompt.history.previous 3 times when empty", () => {
+    handleNormalKey(state, "3", ev("3"), emptyPrompt)
+    const r = handleNormalKey(state, "k", ev("k"), emptyPrompt)
+    expect(cmds(r.actions)).toEqual([
+      "prompt.history.previous",
+      "prompt.history.previous",
+      "prompt.history.previous",
+    ])
+  })
+
+  it("dj still deletes lines when input is empty", () => {
+    handleNormalKey(state, "d", ev("d"), emptyPrompt)
+    const r = handleNormalKey(state, "j", ev("j"), emptyPrompt)
+    expect(cmds(r.actions)).toEqual(["input.delete.line", "input.delete.line"])
   })
 })
