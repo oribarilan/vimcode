@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-24
+
+### Added
+
+- `/` in normal mode opens the session timeline (jump-to-message picker).
+- `[`/`]` scroll the conversation view half a page up/down.
+- `{`/`}` jump to the previous/next message in the conversation.
+- `translateKey` now maps shift+`[` → `{` and shift+`]` → `}`.
+
 ## [0.3.3] — 2026-05-21
 
 ### Fixed
@@ -118,7 +127,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/oribarilan/vimcode/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/oribarilan/vimcode/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/oribarilan/vimcode/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/oribarilan/vimcode/compare/v0.3.0...v0.3.1

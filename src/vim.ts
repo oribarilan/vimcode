@@ -73,6 +73,8 @@ export function translateKey(ev: KeyEvent): string {
     if (/[a-z]/.test(ev.name)) key = ev.name.toUpperCase()
     else if (ev.name === "4") key = "$"
     else if (ev.name === "6") key = "^"
+    else if (ev.name === "[") key = "{"
+    else if (ev.name === "]") key = "}"
   }
   return key
 }
@@ -131,6 +133,36 @@ export function handleNormalKey(
 
   if (key === ":") {
     actions.push({ type: "cmd", cmd: "command.palette.show" })
+    resetPending(state)
+    return { consume: true, actions }
+  }
+
+  if (key === "/") {
+    actions.push({ type: "cmd", cmd: "session.timeline" })
+    resetPending(state)
+    return { consume: true, actions }
+  }
+
+  if (key === "[") {
+    actions.push({ type: "cmd", cmd: "session.half.page.up" })
+    resetPending(state)
+    return { consume: true, actions }
+  }
+
+  if (key === "]") {
+    actions.push({ type: "cmd", cmd: "session.half.page.down" })
+    resetPending(state)
+    return { consume: true, actions }
+  }
+
+  if (key === "{") {
+    actions.push({ type: "cmd", cmd: "session.message.previous" })
+    resetPending(state)
+    return { consume: true, actions }
+  }
+
+  if (key === "}") {
+    actions.push({ type: "cmd", cmd: "session.message.next" })
     resetPending(state)
     return { consume: true, actions }
   }

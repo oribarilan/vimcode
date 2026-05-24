@@ -60,8 +60,12 @@ describe("translateKey", () => {
     expect(translateKey(ev("6", { shift: true }))).toBe("^")
   })
 
-  it("non-shifted digit passes through", () => {
-    expect(translateKey(ev("3"))).toBe("3")
+  it("shift+[ → {", () => {
+    expect(translateKey(ev("[", { shift: true }))).toBe("{")
+  })
+
+  it("shift+] → }", () => {
+    expect(translateKey(ev("]", { shift: true }))).toBe("}")
   })
 })
 
@@ -261,6 +265,31 @@ describe("handleNormalKey — special keys", () => {
   it(": dispatches command.palette.show", () => {
     const r = handleNormalKey(state, ":", ev(":"), mockPrompt)
     expect(cmds(r.actions)).toEqual(["command.palette.show"])
+  })
+
+  it("/ dispatches session.timeline", () => {
+    const r = handleNormalKey(state, "/", ev("/"), mockPrompt)
+    expect(cmds(r.actions)).toEqual(["session.timeline"])
+  })
+
+  it("[ dispatches session.half.page.up", () => {
+    const r = handleNormalKey(state, "[", ev("["), mockPrompt)
+    expect(cmds(r.actions)).toEqual(["session.half.page.up"])
+  })
+
+  it("] dispatches session.half.page.down", () => {
+    const r = handleNormalKey(state, "]", ev("]"), mockPrompt)
+    expect(cmds(r.actions)).toEqual(["session.half.page.down"])
+  })
+
+  it("{ dispatches session.message.previous", () => {
+    const r = handleNormalKey(state, "{", ev("[", { shift: true }), mockPrompt)
+    expect(cmds(r.actions)).toEqual(["session.message.previous"])
+  })
+
+  it("} dispatches session.message.next", () => {
+    const r = handleNormalKey(state, "}", ev("]", { shift: true }), mockPrompt)
+    expect(cmds(r.actions)).toEqual(["session.message.next"])
   })
 
   it("X dispatches input.backspace", () => {

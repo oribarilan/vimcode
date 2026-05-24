@@ -24,7 +24,7 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
 {
-  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.3.3"]
+  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.4.0"]
 }
 ```
 
@@ -79,6 +79,9 @@ Counts work too: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 | `Ctrl+r` | Redo |
 | `p` | Paste from yank register |
 | `:` | Command palette |
+| `/` | Jump to message (session timeline) |
+| `[` `]` | Scroll conversation half-page up/down |
+| `{` `}` | Jump to previous/next message |
 | `X` | Backspace |
 | `J` | Join current line with next |
 | `j` `k` | Cycle prompt history (when input is empty) |
