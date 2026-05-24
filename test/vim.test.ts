@@ -612,3 +612,130 @@ describe("handleVisualKey — exit and passthrough", () => {
     expect(r.actions).toEqual([])
   })
 })
+
+// ── handleNormalKey — visual-line entry ────────────────────
+
+describe("handleNormalKey — visual-line entry", () => {
+  it("V enters visual-line mode", () => {
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), mockPrompt)
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("visual-line")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "visual-line" })
+    expect(r.actions).toContainEqual({ type: "selectLines" })
+  })
+
+  it("V clears pending operator", () => {
+    state.pendingOp = "d"
+    handleNormalKey(state, "V", ev("v", { shift: true }), mockPrompt)
+    expect(state.pendingOp).toBeNull()
+    expect(state.mode).toBe("visual-line")
+  })
+})
+
+// ── handleVisualKey — visual-line motions ──────────────────
+
+describe("handleVisualKey — visual-line motions", () => {
+  beforeEach(() => {
+    state.mode = "visual-line"
+  })
+
+  it("j dispatches input.move.down + selectLines", () => {
+    const r = handleVisualKey(state, "j", ev("j"))
+    expect(cmds(r.actions)).toEqual(["input.move.down"])
+    expect(r.actions).toContainEqual({ type: "selectLines" })
+  })
+
+  it("k dispatches input.move.up + selectLines", () => {
+    const r = handleVisualKey(state, "k", ev("k"))
+    expect(cmds(r.actions)).toEqual(["input.move.up"])
+    expect(r.actions).toContainEqual({ type: "selectLines" })
+  })
+
+  it("3j dispatches input.move.down 3 times + selectLines", () => {
+    handleVisualKey(state, "3", ev("3"))
+    const r = handleVisualKey(state, "j", ev("j"))
+    expect(cmds(r.actions)).toEqual([
+      "input.move.down",
+      "input.move.down",
+      "input.move.down",
+    ])
+    expect(r.actions).toContainEqual({ type: "selectLines" })
+  })
+
+  it("G dispatches input.buffer.end + selectLines", () => {
+    const r = handleVisualKey(state, "G", ev("g", { shift: true }))
+    expect(cmds(r.actions)).toEqual(["input.buffer.end"])
+    expect(r.actions).toContainEqual({ type: "selectLines" })
+  })
+
+  it("g dispatches input.buffer.home + selectLines", () => {
+    const r = handleVisualKey(state, "g", ev("g"))
+    expect(cmds(r.actions)).toEqual(["input.buffer.home"])
+    expect(r.actions).toContainEqual({ type: "selectLines" })
+  })
+})
+
+// ── handleVisualKey — visual-line operators ────────────────
+
+describe("handleVisualKey — visual-line operators", () => {
+  beforeEach(() => {
+    state.mode = "visual-line"
+  })
+
+  it("d dispatches input.backspace and enters normal mode", () => {
+    const r = handleVisualKey(state, "d", ev("d"))
+    expect(r.consume).toBe(true)
+    expect(cmds(r.actions)).toContain("input.backspace")
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "normal" })
+  })
+
+  it("y produces yankSelection and enters normal mode", () => {
+    const r = handleVisualKey(state, "y", ev("y"))
+    expect(r.consume).toBe(true)
+    expect(r.actions).toContainEqual({ type: "yankSelection" })
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "normal" })
+  })
+
+  it("c dispatches input.backspace and enters insert mode", () => {
+    const r = handleVisualKey(state, "c", ev("c"))
+    expect(r.consume).toBe(true)
+    expect(cmds(r.actions)).toContain("input.backspace")
+    expect(state.mode).toBe("insert")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "insert" })
+  })
+})
+
+// ── handleVisualKey — visual-line exit ─────────────────────
+
+describe("handleVisualKey — visual-line exit", () => {
+  beforeEach(() => {
+    state.mode = "visual-line"
+  })
+
+  it("Escape exits visual-line mode and clears selection", () => {
+    const r = handleVisualKey(state, "escape", ev("escape"))
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "clearSelection" })
+  })
+
+  it("V exits visual-line mode (toggle off)", () => {
+    const r = handleVisualKey(state, "V", ev("v", { shift: true }))
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("normal")
+  })
+
+  it("v exits visual-line mode", () => {
+    const r = handleVisualKey(state, "v", ev("v"))
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("normal")
+  })
+
+  it("exitVisual resets visualAnchorLine", () => {
+    state.visualAnchorLine = 5
+    handleVisualKey(state, "escape", ev("escape"))
+    expect(state.visualAnchorLine).toBe(-1)
+  })
+})

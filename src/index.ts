@@ -25,9 +25,11 @@ const plugin: TuiPluginModule = {
           case "cmd":
             setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0)
             break
-          case "mode":
-            api.ui?.toast?.({ message: action.mode.toUpperCase(), variant: "info", duration: 800 })
+          case "mode": {
+            const label = action.mode === "visual-line" ? "VISUAL LINE" : action.mode.toUpperCase()
+            api.ui?.toast?.({ message: label, variant: "info", duration: 800 })
             break
+          }
           case "toast":
             api.ui?.toast?.({ message: action.message, variant: "info", duration: action.duration ?? 2000 })
             break
@@ -47,6 +49,27 @@ const plugin: TuiPluginModule = {
           }
           case "clearSelection":
             api.renderer?.currentFocusedEditor?.editorView?.resetSelection?.()
+            break
+          case "selectLines":
+            // Deferred so it runs after any preceding motion commands
+            setTimeout(() => {
+              const editor = api.renderer?.currentFocusedEditor
+              if (!editor) return
+              const text = editor.plainText
+              const lines = text.split("\n")
+              const curLine = editor.editorView?.getCursor?.()?.row ?? 0
+              if (state.visualAnchorLine < 0) state.visualAnchorLine = curLine
+              const from = Math.min(state.visualAnchorLine, curLine)
+              const to = Math.max(state.visualAnchorLine, curLine)
+              let startOffset = 0
+              for (let i = 0; i < from; i++) startOffset += lines[i].length + 1
+              let endOffset = startOffset
+              for (let i = from; i <= to; i++) {
+                endOffset += lines[i].length
+                if (i < lines.length - 1) endOffset += 1
+              }
+              editor.editorView?.setSelection?.(startOffset, endOffset)
+            }, 0)
             break
         }
       }
@@ -101,7 +124,7 @@ const plugin: TuiPluginModule = {
         const key = translateKey(ctx.event)
         const result = state.mode === "insert"
           ? handleInsertKey(state, key, ctx.event)
-          : state.mode === "visual"
+          : state.mode === "visual" || state.mode === "visual-line"
             ? handleVisualKey(state, key, ctx.event)
             : handleNormalKey(state, key, ctx.event, prompt)
         if (result.consume) ctx.consume()
