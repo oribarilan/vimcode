@@ -12,11 +12,9 @@ In normal mode, keys are vim commands. Unrecognized keys get swallowed so you do
 
 ## Current gaps
 
-**No persistent mode indicator.** You see a toast ("NORMAL" / "INSERT") on each switch, but it fades after about a second. A permanent indicator would need the host's SolidJS runtime, which isn't available to externally installed plugins.
+**No persistent mode indicator.** You see a toast ("NORMAL" / "INSERT" / "VISUAL") on each switch, but it fades after about a second. A permanent indicator would need the host's SolidJS runtime, which isn't available to externally installed plugins.
 
 **No tab insertion.** Tab in insert mode falls through to OpenCode's default handler. The plugin API has no "insert text at cursor" command, and the only workaround (hijacking the system clipboard) is too fragile.
-
-**No visual mode.** `v`, `V`, `Ctrl+v` do nothing. The plugin API doesn't expose cursor position or text selection, so there's no way to select a range.
 
 ## Install
 
@@ -70,6 +68,19 @@ Counts work too: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 | `o` | Open line below |
 | `O` | Open line above |
 
+### Visual mode
+
+Press `v` in normal mode to enter character-wise visual mode. Motions extend the selection, operators act on it:
+
+| Key | Action |
+|-----|--------|
+| `d` `x` | Delete selection |
+| `c` | Delete selection, enter insert mode |
+| `y` | Yank (copy) selection |
+| `Escape` `v` | Exit visual mode |
+
+All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `0` `$` `G` `g`, with counts.
+
 ### Other
 
 | Key | Action |
@@ -90,9 +101,10 @@ Counts work too: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 
 ## What doesn't work yet
 
-- `ciw`, `di"`, etc. (text objects) -- no cursor position access in the plugin API
+- `V`, `Ctrl+v` -- only character-wise visual mode (`v`) is supported, no line-wise or block
+- `ciw`, `di"`, etc. (text objects) -- not yet implemented
 - `gg` -- single `g` goes to buffer start immediately, doesn't wait for a second keypress
-- `r` (replace char) -- no way to insert a specific character through the API
+- `r` (replace char) -- not yet implemented
 - `yw`, `y$`, etc. -- only `yy` works, the rest need cursor tracking
 - `yy` accuracy -- line position is tracked with a counter that drifts on clicks and arrow keys
 

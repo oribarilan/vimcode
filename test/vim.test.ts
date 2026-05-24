@@ -4,6 +4,7 @@ import {
   translateKey,
   handleInsertKey,
   handleNormalKey,
+  handleVisualKey,
   type VimState,
   type Action,
   type PromptAccess,
@@ -456,5 +457,159 @@ describe("handleNormalKey — history scrolling", () => {
     handleNormalKey(state, "d", ev("d"), emptyPrompt)
     const r = handleNormalKey(state, "j", ev("j"), emptyPrompt)
     expect(cmds(r.actions)).toEqual(["input.delete.line", "input.delete.line"])
+  })
+})
+
+// ── handleNormalKey — visual mode entry ────────────────────
+
+describe("handleNormalKey — visual mode entry", () => {
+  it("v enters visual mode", () => {
+    const r = handleNormalKey(state, "v", ev("v"), mockPrompt)
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("visual")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "visual" })
+  })
+
+  it("v clears pending operator", () => {
+    state.pendingOp = "d"
+    handleNormalKey(state, "v", ev("v"), mockPrompt)
+    expect(state.pendingOp).toBeNull()
+    expect(state.mode).toBe("visual")
+  })
+})
+
+// ── handleVisualKey — motions ──────────────────────────────
+
+describe("handleVisualKey — motions", () => {
+  beforeEach(() => {
+    state.mode = "visual"
+  })
+
+  it("h dispatches input.select.left", () => {
+    const r = handleVisualKey(state, "h", ev("h"))
+    expect(cmds(r.actions)).toEqual(["input.select.left"])
+  })
+
+  it("l dispatches input.select.right", () => {
+    const r = handleVisualKey(state, "l", ev("l"))
+    expect(cmds(r.actions)).toEqual(["input.select.right"])
+  })
+
+  it("j dispatches input.select.down", () => {
+    const r = handleVisualKey(state, "j", ev("j"))
+    expect(cmds(r.actions)).toEqual(["input.select.down"])
+  })
+
+  it("k dispatches input.select.up", () => {
+    const r = handleVisualKey(state, "k", ev("k"))
+    expect(cmds(r.actions)).toEqual(["input.select.up"])
+  })
+
+  it("w dispatches input.select.word.forward", () => {
+    const r = handleVisualKey(state, "w", ev("w"))
+    expect(cmds(r.actions)).toEqual(["input.select.word.forward"])
+  })
+
+  it("$ dispatches input.select.line.end", () => {
+    const r = handleVisualKey(state, "$", ev("4", { shift: true }))
+    expect(cmds(r.actions)).toEqual(["input.select.line.end"])
+  })
+
+  it("3l dispatches input.select.right 3 times", () => {
+    handleVisualKey(state, "3", ev("3"))
+    const r = handleVisualKey(state, "l", ev("l"))
+    expect(cmds(r.actions)).toEqual([
+      "input.select.right",
+      "input.select.right",
+      "input.select.right",
+    ])
+  })
+
+  it("G dispatches input.select.buffer.end", () => {
+    const r = handleVisualKey(state, "G", ev("g", { shift: true }))
+    expect(cmds(r.actions)).toEqual(["input.select.buffer.end"])
+  })
+
+  it("g dispatches input.select.buffer.home", () => {
+    const r = handleVisualKey(state, "g", ev("g"))
+    expect(cmds(r.actions)).toEqual(["input.select.buffer.home"])
+  })
+})
+
+// ── handleVisualKey — operators ────────────────────────────
+
+describe("handleVisualKey — operators", () => {
+  beforeEach(() => {
+    state.mode = "visual"
+  })
+
+  it("d deletes selection and enters normal mode", () => {
+    const r = handleVisualKey(state, "d", ev("d"))
+    expect(r.consume).toBe(true)
+    expect(cmds(r.actions)).toContain("input.backspace")
+    expect(r.actions).toContainEqual({ type: "clearSelection" })
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "normal" })
+  })
+
+  it("c deletes selection and enters insert mode", () => {
+    const r = handleVisualKey(state, "c", ev("c"))
+    expect(r.consume).toBe(true)
+    expect(cmds(r.actions)).toContain("input.backspace")
+    expect(state.mode).toBe("insert")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "insert" })
+  })
+
+  it("y yanks selection and enters normal mode", () => {
+    const r = handleVisualKey(state, "y", ev("y"))
+    expect(r.consume).toBe(true)
+    expect(r.actions).toContainEqual({ type: "yankSelection" })
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "mode", mode: "normal" })
+  })
+
+  it("x deletes selection (alias for d)", () => {
+    const r = handleVisualKey(state, "x", ev("x"))
+    expect(cmds(r.actions)).toContain("input.backspace")
+    expect(state.mode).toBe("normal")
+  })
+})
+
+// ── handleVisualKey — exit and passthrough ─────────────────
+
+describe("handleVisualKey — exit and passthrough", () => {
+  beforeEach(() => {
+    state.mode = "visual"
+  })
+
+  it("Escape exits visual mode and clears selection", () => {
+    const r = handleVisualKey(state, "escape", ev("escape"))
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "clearSelection" })
+    expect(r.actions).toContainEqual({ type: "mode", mode: "normal" })
+  })
+
+  it("v exits visual mode and clears selection", () => {
+    const r = handleVisualKey(state, "v", ev("v"))
+    expect(r.consume).toBe(true)
+    expect(state.mode).toBe("normal")
+    expect(r.actions).toContainEqual({ type: "clearSelection" })
+  })
+
+  it("meta combo passes through", () => {
+    const r = handleVisualKey(state, "c", ev("c", { meta: true }))
+    expect(r.consume).toBe(false)
+  })
+
+  it("ctrl combo passes through", () => {
+    const r = handleVisualKey(state, "x", ev("x", { ctrl: true }))
+    expect(r.consume).toBe(false)
+  })
+
+  it("unrecognized key is consumed (no typing in visual)", () => {
+    const r = handleVisualKey(state, "z", ev("z"))
+    expect(r.consume).toBe(true)
+    expect(r.actions).toEqual([])
   })
 })

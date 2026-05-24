@@ -1,4 +1,4 @@
-export type Mode = "normal" | "insert"
+export type Mode = "normal" | "insert" | "visual"
 export type Operator = "d" | "c" | "y" | null
 
 export type Action =
@@ -6,6 +6,8 @@ export type Action =
   | { type: "mode"; mode: Mode }
   | { type: "toast"; message: string; duration?: number }
   | { type: "yank"; text: string }
+  | { type: "yankSelection" }
+  | { type: "clearSelection" }
 
 export type HandlerResult = {
   consume: boolean
@@ -46,6 +48,20 @@ export const MOTIONS: Record<string, string> = {
   "^": "input.line.home",
   $: "input.line.end",
   G: "input.buffer.end",
+}
+
+export const SELECT_MOTIONS: Record<string, string> = {
+  h: "input.select.left",
+  l: "input.select.right",
+  j: "input.select.down",
+  k: "input.select.up",
+  w: "input.select.word.forward",
+  b: "input.select.word.backward",
+  e: "input.select.word.forward",
+  "0": "input.select.line.home",
+  "^": "input.select.line.home",
+  $: "input.select.line.end",
+  G: "input.select.buffer.end",
 }
 
 const DELETE_MOTION: Record<string, string> = {
@@ -286,6 +302,13 @@ export function handleNormalKey(
     return { consume: true, actions }
   }
 
+  // Visual mode entry
+  if (key === "v") {
+    state.mode = "visual"
+    resetPending(state)
+    return { consume: true, actions: [{ type: "mode", mode: "visual" }] }
+  }
+
   // Insert entries
   if (key === "i") {
     enterInsert(state, actions)
@@ -324,6 +347,65 @@ export function handleNormalKey(
   return { consume: true, actions }
 }
 
+export function handleVisualKey(
+  state: VimState,
+  key: string,
+  ev: KeyEvent,
+): HandlerResult {
+  if (ev.meta || ev.super) return PASS
+  if (ev.ctrl) return PASS
+
+  const actions: Action[] = []
+
+  // Count accumulation
+  if (/[1-9]/.test(key) || (key === "0" && state.count > 0)) {
+    state.count = state.count * 10 + parseInt(key)
+    return { consume: true, actions }
+  }
+
+  // Exit visual mode
+  if (ev.name === "escape" || key === "v") {
+    exitVisual(state, actions)
+    return { consume: true, actions }
+  }
+
+  // Operators act on selection
+  if (key === "d" || key === "x") {
+    actions.push({ type: "cmd", cmd: "input.backspace" })
+    actions.push({ type: "clearSelection" })
+    enterNormal(state, actions)
+    return { consume: true, actions }
+  }
+
+  if (key === "c") {
+    actions.push({ type: "cmd", cmd: "input.backspace" })
+    enterInsert(state, actions)
+    return { consume: true, actions }
+  }
+
+  if (key === "y") {
+    actions.push({ type: "yankSelection" })
+    enterNormal(state, actions)
+    return { consume: true, actions }
+  }
+
+  // Motions extend selection
+  if (key in SELECT_MOTIONS) {
+    pushN(actions, SELECT_MOTIONS[key], consumeCount(state))
+    return { consume: true, actions }
+  }
+
+  // g = select to buffer home
+  if (key === "g") {
+    actions.push({ type: "cmd", cmd: "input.select.buffer.home" })
+    state.count = 0
+    return { consume: true, actions }
+  }
+
+  // Unbound key — consume to prevent typing
+  return { consume: true, actions }
+}
+
 // ── Helpers ──────────────────────────────────────────────────
 
 function resetPending(state: VimState) {
@@ -341,6 +423,17 @@ function enterInsert(state: VimState, actions: Action[]) {
   resetPending(state)
   state.mode = "insert"
   actions.push({ type: "mode", mode: "insert" })
+}
+
+function enterNormal(state: VimState, actions: Action[]) {
+  state.mode = "normal"
+  state.count = 0
+  actions.push({ type: "mode", mode: "normal" })
+}
+
+function exitVisual(state: VimState, actions: Action[]) {
+  actions.push({ type: "clearSelection" })
+  enterNormal(state, actions)
 }
 
 function pushN(actions: Action[], cmd: string, n: number) {

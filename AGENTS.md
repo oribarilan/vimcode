@@ -35,10 +35,10 @@ test/
 
 **Data flow:**
 ```
-KeyEvent → translateKey() → handleInsertKey/handleNormalKey() → HandlerResult { consume, actions[] }
-                                    ↓                                          ↓
-                             mutates VimState                        applyActions() in index.ts
-                          (count, pendingOp, mode)                   dispatches commands via setTimeout
+KeyEvent → translateKey() → handleInsertKey/handleNormalKey/handleVisualKey() → HandlerResult { consume, actions[] }
+                                    ↓                                                         ↓
+                             mutates VimState                                       applyActions() in index.ts
+                          (count, pendingOp, mode)                                  dispatches commands via setTimeout
 ```
 
 Handlers in `vim.ts` are pure — they take state + key + event, mutate state, return actions. They never touch `api`. The only file that calls `api.keymap.dispatchCommand` is `index.ts`.
@@ -48,6 +48,8 @@ Handlers in `vim.ts` are pure — they take state + key + event, mutate state, r
 - `{ type: "mode", mode: Mode }` — updates the SolidJS signal for the indicator
 - `{ type: "toast", message: string }` — shows a notification
 - `{ type: "yank", text: string }` — writes text to system clipboard via `writeClipboard()`
+- `{ type: "yankSelection" }` — reads selected text from the focused editor, stores in yank register and clipboard
+- `{ type: "clearSelection" }` — clears the textarea's selection via `editorView.resetSelection()`
 
 ### Adding a keybinding
 

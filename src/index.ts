@@ -1,5 +1,5 @@
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui"
-import { createVimState, translateKey, handleInsertKey, handleNormalKey, type Action, type Mode } from "./vim"
+import { createVimState, translateKey, handleInsertKey, handleNormalKey, handleVisualKey, type Action, type Mode } from "./vim"
 import { writeClipboard } from "./clipboard"
 import { checkForUpdate } from "./version"
 
@@ -33,6 +33,20 @@ const plugin: TuiPluginModule = {
             break
           case "yank":
             writeClipboard(action.text)
+            break
+          case "yankSelection": {
+            const editor = api.renderer?.currentFocusedEditor
+            const text = editor?.editorView?.getSelectedText?.() ?? ""
+            if (text) {
+              state.yankRegister = text
+              writeClipboard(text)
+              api.ui?.toast?.({ message: "yanked", variant: "info", duration: 1000 })
+            }
+            editor?.editorView?.resetSelection?.()
+            break
+          }
+          case "clearSelection":
+            api.renderer?.currentFocusedEditor?.editorView?.resetSelection?.()
             break
         }
       }
@@ -87,7 +101,9 @@ const plugin: TuiPluginModule = {
         const key = translateKey(ctx.event)
         const result = state.mode === "insert"
           ? handleInsertKey(state, key, ctx.event)
-          : handleNormalKey(state, key, ctx.event, prompt)
+          : state.mode === "visual"
+            ? handleVisualKey(state, key, ctx.event)
+            : handleNormalKey(state, key, ctx.event, prompt)
         if (result.consume) ctx.consume()
         applyActions(result.actions)
       },
