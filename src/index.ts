@@ -9,8 +9,14 @@ const plugin: TuiPluginModule = {
     const state = createVimState()
 
     const prompt = {
-      getLine: (n: number) => (api.prompt?.current?.input ?? "").split("\n")[n] ?? "",
-      getLineCount: () => (api.prompt?.current?.input ?? "").split("\n").length,
+      getLine: (n: number) => getInputText().split("\n")[n] ?? "",
+      getLineCount: () => getInputText().split("\n").length,
+    }
+
+    // api.prompt doesn't exist on the TUI plugin API. The actual text lives
+    // on the focused editor exposed by the renderer.
+    function getInputText(): string {
+      return api.renderer?.currentFocusedEditor?.plainText ?? ""
     }
 
     function applyActions(actions: Action[]) {

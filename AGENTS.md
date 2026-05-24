@@ -80,7 +80,7 @@ To add a new motion that works with operators:
 
 - **`g` fires immediately as `input.buffer.home`** — should wait for a second `g` (needs sequence state). Single `g` = go to top, which is wrong for vim.
 - **`lineTracker` drifts** — only j/k/G/g/o update it. Clicks, arrow keys, word motions don't. `yy` can yank the wrong line.
-- **No cursor access** — the plugin API doesn't expose cursor position or selection. Text objects (`ciw`, `di"`) and visual mode are not feasible.
+- **No cursor access** — the plugin API doesn't expose cursor position or selection. Text objects (`ciw`, `di"`) and visual mode are not feasible. Input text is read from `api.renderer.currentFocusedEditor.plainText` (the TUI plugin API has no `api.prompt`).
 - **No tab in insert mode** — the plugin API has no "insert text at cursor" command. The only way to inject arbitrary text is writing to the system clipboard and dispatching `prompt.paste`, which clobbers the user's clipboard and races with async `pbcopy`/`pbpaste`. Tab is passed through to OpenCode's default handler instead.
 - **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec.
 
