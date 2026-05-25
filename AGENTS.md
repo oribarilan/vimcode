@@ -26,11 +26,12 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 
 ```
 src/
-  index.ts       (59 lines)   Plugin entry: intercept registration, action application
-  vim.ts         (319 lines)  Pure vim engine: state, handlers, command tables, types
-  clipboard.ts   (11 lines)   writeClipboard()/readClipboard() via pbcopy/pbpaste
+  index.ts       (118 lines)  Plugin entry: intercept registration, action application
+  vim.ts         (457 lines)  Pure vim engine: state, handlers, command tables, types
+  clipboard.ts   (25 lines)   writeClipboard() via pbcopy
+  version.ts     (24 lines)   Version constant, GitHub update check
 test/
-  vim.test.ts    (396 lines)  Characterization tests for all key handling branches
+  vim.test.ts    (620 lines)  Characterization tests for all key handling branches
 ```
 
 **Data flow:**
@@ -82,7 +83,7 @@ To add a new motion that works with operators:
 
 - **`g` fires immediately as `input.buffer.home`** — should wait for a second `g` (needs sequence state). Single `g` = go to top, which is wrong for vim.
 - **`lineTracker` drifts** — only j/k/G/g/o update it. Clicks, arrow keys, word motions don't. `yy` can yank the wrong line.
-- **No cursor access** — the plugin API doesn't expose cursor position or selection. Text objects (`ciw`, `di"`) and visual mode are not feasible. Input text is read from `api.renderer.currentFocusedEditor.plainText` (the TUI plugin API has no `api.prompt`).
+- **No cursor access** — the plugin API doesn't expose cursor position. Text objects (`ciw`, `di"`) are not feasible. Character-wise visual mode works via `input.select.*` commands but has no cursor position feedback. Input text is read from `api.renderer.currentFocusedEditor.plainText` (the TUI plugin API has no `api.prompt`).
 - **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec.
 
 ## Development

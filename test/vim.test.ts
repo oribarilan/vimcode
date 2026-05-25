@@ -11,7 +11,7 @@ import {
 } from "../src/vim"
 
 function cmds(actions: Action[]): string[] {
-  return actions.filter((a) => a.type === "cmd").map((a) => (a as any).cmd)
+  return actions.filter((a): a is Extract<Action, { type: "cmd" }> => a.type === "cmd").map((a) => a.cmd)
 }
 
 const ev = (
@@ -241,7 +241,7 @@ describe("handleNormalKey — operators", () => {
     const r = handleNormalKey(state, "w", ev("w"), mockPrompt)
     const toasts = r.actions.filter((a) => a.type === "toast")
     expect(toasts).toHaveLength(1)
-    expect((toasts[0] as any).message).toContain("Only yy supported")
+    expect((toasts[0] as Extract<Action, { type: "toast" }>).message).toContain("Only yy supported")
   })
 })
 
