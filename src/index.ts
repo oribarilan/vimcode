@@ -26,7 +26,9 @@ const plugin: TuiPluginModule = {
             setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0)
             break
           case "mode":
-            api.ui?.toast?.({ message: action.mode.toUpperCase(), variant: "info", duration: 800 })
+            if (options?.modeToast !== false) {
+              api.ui?.toast?.({ message: action.mode.toUpperCase(), variant: "info", duration: 800 })
+            }
             break
           case "toast":
             api.ui?.toast?.({ message: action.message, variant: "info", duration: action.duration ?? 2000 })
