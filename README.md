@@ -46,7 +46,7 @@ To pass options, use the tuple form in `tui.json`:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `updateCheck` | `boolean` | `true` | Check GitHub for new versions once per day. Set to `false` to disable all network requests. |
+| `updateCheck` | `boolean` | `true` | On startup, check GitHub for new versions (at most once per day). This is the only network request vimcode makes. Set to `false` to disable. |
 | `modeToast` | `boolean` | `true` | Show a brief toast ("NORMAL" / "INSERT" / "VISUAL") on mode switches. Set to `false` to rely on cursor shape alone. |
 
 ## What works
