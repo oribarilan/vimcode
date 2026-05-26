@@ -4,23 +4,23 @@ Vim keybindings for the [OpenCode](https://opencode.ai) prompt. Early beta, thin
 
 ## What it does
 
-Adds normal/insert mode to OpenCode's prompt input. Escape switches to normal mode, `i` goes back to insert. You get a brief toast on each switch.
+Adds normal/insert mode to OpenCode's prompt input. Escape enters normal mode, `i` goes back to insert. A brief toast shows the current mode on each switch (configurable).
 
-In insert mode, typing works normally. Enter adds a newline, Ctrl+Enter submits, Escape switches to normal. The file picker and autocomplete aren't affected: Enter picks the selected item and Escape closes the picker without leaving insert.
+In insert mode, typing works normally. Enter adds a newline, Ctrl+Enter submits. The file picker and autocomplete keep working: Enter picks the selected item, Escape closes the picker without leaving insert.
 
 In normal mode, keys are vim commands. Unrecognized keys get swallowed so you don't accidentally type into the prompt. `:` opens the command palette.
 
 ## Current gaps
 
-**No persistent mode indicator.** You see a toast ("NORMAL" / "INSERT" / "VISUAL") on each switch, but it fades after about a second. A permanent indicator would need the host's SolidJS runtime, which isn't available to externally installed plugins.
+**No persistent mode indicator.** The toast fades after about a second. Cursor shape (block vs bar) is the persistent signal, but a proper status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
 
 ## Platform notes
 
-Clipboard integration (`y`, `yy`, `p`) uses the system clipboard: `pbcopy` on macOS, `clip.exe` on Windows, `xclip` on Linux. Linux users need `xclip` installed (`apt install xclip` or equivalent). If the clipboard tool is missing, yank/paste still works within the session via an internal register.
+Clipboard (`y`, `yy`, `p`) uses the system clipboard: `pbcopy` on macOS, `clip.exe` on Windows, `xclip` on Linux. Linux users need `xclip` installed (`apt install xclip` or equivalent). If the clipboard tool is missing, yank/paste still works within the session via an internal register.
 
-Cursor shape (block in normal mode, bar in insert mode) requires a terminal that supports DECSCUSR escape sequences. Most modern terminals do (iTerm2, Ghostty, Alacritty, Windows Terminal, Kitty). Some (notably older macOS Terminal.app) may not respond.
+Cursor shape (block in normal, bar in insert) needs a terminal that supports DECSCUSR escape sequences. Most modern terminals do — iTerm2, Ghostty, Alacritty, Windows Terminal, Kitty. Older macOS Terminal.app may not respond.
 
-The plugin checks GitHub for new versions once per day. No telemetry or usage data is collected.
+The plugin checks GitHub for new versions once per day on startup. No other network requests, no telemetry.
 
 ## Install
 
@@ -28,11 +28,11 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
 {
-  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.6.1"]
+  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.7.0"]
 }
 ```
 
-To upgrade, change the version tag and restart OpenCode. The plugin will show a toast when a newer version is available.
+To upgrade, change the version tag and restart OpenCode. You'll see a toast when a newer version is available.
 
 ## Configuration
 
@@ -40,7 +40,7 @@ To pass options, use the tuple form in `tui.json`:
 
 ```json
 {
-  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.6.1", { "updateCheck": false }]]
+  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.7.0", { "updateCheck": false }]]
 }
 ```
 
@@ -131,19 +131,19 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 ## Roadmap
 
-Once vim coverage and stability feel solid, we plan to add configurable key bindings so you can remap or extend the defaults.
+Configurable key bindings are next once the core vim coverage stabilizes.
 
 ## Overlay passthrough
 
-When OpenCode shows its own UI -- command palette, `/sessions`, the `@` file/agent picker, question prompts, permission prompts -- vimcode gets out of the way. All keys pass through to the overlay until it closes.
+When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question prompts, permission prompts) vimcode steps aside. All keys pass through to the overlay until it closes.
 
 ## Escape behavior
 
-First Escape in insert mode switches to normal. It won't trigger the double-escape interrupt. So from insert mode you need 3 escapes to cancel a running response: one for normal mode, two more for the interrupt.
+First Escape in insert mode switches to normal — it won't trigger OpenCode's double-escape interrupt. So canceling a running response from insert mode takes 3 escapes: one for normal, two more for the interrupt.
 
 ## How it works
 
-vimcode is a [TUI plugin](https://opencode.ai/docs/plugins/) that registers a key intercept on every prompt keypress. A pure handler in `src/vim.ts` takes the current mode and key, returns a list of actions (move cursor, delete word, switch mode, etc.) without calling the API. `src/index.ts` dispatches those actions through `@opentui/keymap` commands.
+vimcode registers a key intercept on every prompt keypress. A pure handler in `src/vim.ts` takes the current mode and key, returns a list of actions (move cursor, delete word, switch mode, etc.) without touching the plugin API. `src/index.ts` applies those actions through `@opentui/keymap` commands.
 
 ## Contributing
 

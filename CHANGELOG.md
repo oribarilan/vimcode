@@ -8,6 +8,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-26
+
+### Added
+
+- Cross-platform clipboard. Yank/paste now works on macOS (`pbcopy`), Windows (`clip.exe`), and Linux (`xclip`). Previously macOS-only.
+- Plugin configuration via `tui.json` tuple syntax. Three options available:
+  - `updateCheck` — disable the daily GitHub version check.
+  - `modeToast` — disable the mode-switch toast, relying on cursor shape alone.
+  - `startMode` — start in normal mode instead of insert.
+- Daily caching for the update checker via `api.kv`. Previously checked GitHub on every launch.
+- GitHub Actions CI — runs `bun test` on push and PR to main.
+- Issue templates for bug reports and missing keybinding requests.
+- Version sync test — catches drift between `VERSION` and `package.json` at test time.
+- `typecheck` script (`tsc --noEmit`) in `package.json`.
+- MIT LICENSE file.
+
+### Changed
+
+- Removed unused devDependencies (`@opentui/core`, `@opentui/keymap`, `@opentui/solid`, `solid-js`). Pinned `@opencode-ai/plugin` to `^1.15.4`.
+- Removed `private: true` from `package.json`.
+- Dropped lockfiles from git. Plugin consumers resolve their own deps.
+- Replaced local paths in AGENTS.md with public GitHub URLs.
+- Fixed `g`/`gg` contradiction in README — `g` removed from keybinding tables.
+- Added platform notes and configuration sections to README.
+
 ## [0.6.1] — 2026-05-25
 
 ### Changed
@@ -157,7 +182,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/oribarilan/vimcode/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/oribarilan/vimcode/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/oribarilan/vimcode/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/oribarilan/vimcode/compare/v0.4.0...v0.5.0
