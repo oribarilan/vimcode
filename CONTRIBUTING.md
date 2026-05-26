@@ -5,7 +5,7 @@
 ```bash
 npm install      # install deps
 just dev         # launch OpenCode with the plugin loaded
-bun test         # run tests
+just check       # run lint + tests
 ```
 
 Running `opencode` directly in this directory won't load the plugin. You need `just dev`, which sets `OPENCODE_TUI_CONFIG=dev-tui.json`.
@@ -15,7 +15,7 @@ Running `opencode` directly in this directory won't load the plugin. You need `j
 1. Add the key check in the right section of `src/vim.ts` (`handleNormalKey()` for normal mode keys).
 2. Return appropriate actions: `{ consume: true, actions: [{ type: "cmd", cmd: "input.some.command" }] }`
 3. Add a test in `test/vim.test.ts`.
-4. Run `bun test`, then `just dev` to verify.
+4. Run `just check`, then `just dev` to verify.
 
 See `AGENTS.md` for operator+motion combos and other patterns.
 
@@ -46,7 +46,7 @@ Releases are manual.
 5. Bump version in `package.json` (`npm version X.Y.Z --no-git-tag-version`).
 6. Bump `VERSION` in `src/version.ts` to match.
 7. Update the version tag in `README.md`'s install snippet.
-8. Run `bun test`.
+8. Run `just check`.
 9. Commit: `Release vX.Y.Z: <one-line summary>`.
 10. Tag: `git tag vX.Y.Z`
 11. Push: `git push origin main vX.Y.Z`
