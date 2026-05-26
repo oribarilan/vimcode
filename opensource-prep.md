@@ -25,6 +25,6 @@ Tracking what needs doing before the repo goes public, and what can wait.
 ## Still to do (post-launch, not blocking)
 
 ### Design decisions
-- [x] **Update checker opt-out** — users can set `{ "updateCheck": false }` in plugin config to disable all network requests. Documented in README Configuration section.
-- [ ] **Escape tax** — from insert mode, reaching the double-escape interrupt requires 3 escapes. Power users may want normal-mode Escape to pass through (making it 2 total). This is a design call, not a bug.
-- [ ] **Mode indicator** — toast fades after ~1s. Cursor shape (block vs bar) is the persistent signal. Consider whether the toast is still needed or just noise. Can't add a slot indicator until OpenCode's runtime module resolution works for external plugins.
+- [x] **Update checker opt-out** — users can set `{ "updateCheck": false }` in plugin config to disable the daily GitHub check. Documented in README Configuration section.
+- [x] **Escape tax** — keeping 3 escapes from insert to interrupt. Vim users expect Escape to switch modes, not pass through.
+- [x] **Mode indicator** — keeping the toast, now configurable via `{ "modeToast": false }` for users who prefer cursor shape alone.
