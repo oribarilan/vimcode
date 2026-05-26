@@ -4,14 +4,22 @@
 install:
     npm install
 
-# Run all tests and checks
+# Run tests
 test:
-    bunx biome check .
     bun test
 
-# Auto-fix lint and formatting
-fix:
+# Check formatting and lint
+lint:
+    bunx biome check .
+
+# Auto-fix formatting and lint
+format:
     bunx biome check --write .
+
+# Run lint + tests
+check:
+    just lint
+    just test
 
 # Launch OpenCode with the vimcode plugin active
 dev:
