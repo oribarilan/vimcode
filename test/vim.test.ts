@@ -626,3 +626,36 @@ describe("version sync", () => {
     expect(VERSION).toBe(pkg.version)
   })
 })
+
+// ── plugin init sanity check ──────────────────────────────
+
+describe("plugin init", () => {
+  it("tui() does not throw with a minimal mock API", async () => {
+    const plugin = (await import("../src/index")).default
+    expect(plugin.id).toBe("vimcode")
+
+    // Minimal mock matching what OpenCode passes to tui().
+    // Intentionally sparse — some fields are undefined or stubs,
+    // which is exactly the hostile environment we need to survive.
+    const dispatchCommand = () => ({ ok: false })
+    const api = {
+      renderer: undefined,
+      ui: { toast: () => {}, dialog: { open: false } },
+      keymap: { intercept: () => {}, dispatchCommand },
+      route: { current: { name: "home", params: {} } },
+      state: { session: { question: () => [], permission: () => [] } },
+      lifecycle: { onDispose: () => {} },
+      kv: {},  // empty object — the scenario that crashed v0.7.0
+    }
+
+    // Should not throw. The cursor interval writes to stdout,
+    // so we stub it to avoid noise in test output.
+    const origWrite = process.stdout.write
+    process.stdout.write = () => true
+    try {
+      await plugin.tui(api as any, undefined, undefined as any)
+    } finally {
+      process.stdout.write = origWrite
+    }
+  })
+})
