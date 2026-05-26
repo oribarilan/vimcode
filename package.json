@@ -23,9 +23,12 @@
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check": "biome check .",
+    "fix": "biome check --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.15",
     "@opencode-ai/plugin": "^1.15.4",
     "tsx": "^4.22.1"
   }
