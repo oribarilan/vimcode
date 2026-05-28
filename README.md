@@ -1,26 +1,24 @@
-# vimcode
+<h1 align="center">vimcode</h1>
 
-Vim keybindings for the [OpenCode](https://opencode.ai) prompt. Early beta, things will break.
+<p align="center"><strong>Vim keybindings for the <a href="https://opencode.ai">OpenCode</a> prompt.</strong></p>
 
-## What it does
+<p align="center"><em>Experimental. Things will break.</em></p>
 
-Adds normal/insert mode to OpenCode's prompt input. Escape enters normal mode, `i` goes back to insert. A brief toast shows the current mode on each switch (configurable).
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/d0afa749-96c2-4f1c-adcb-5ab388d5798e" width="800" controls></video>
+</p>
 
-In insert mode, typing works normally. Enter adds a newline, Ctrl+Enter submits. The file picker and autocomplete keep working: Enter picks the selected item, Escape closes the picker without leaving insert.
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#keybindings">Keybindings</a> ·
+  <a href="#known-gaps">Known gaps</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
 
-In normal mode, keys are vim commands. Unrecognized keys get swallowed so you don't accidentally type into the prompt. `:` opens the command palette.
-
-## Current gaps
-
-**No persistent mode indicator.** The toast fades after about a second. Cursor shape (block vs bar) is the persistent signal, but a proper status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
-
-## Platform notes
-
-Clipboard (`y`, `yy`, `p`) uses the system clipboard: `pbcopy` on macOS, `clip.exe` on Windows, `xclip` on Linux. Linux users need `xclip` installed (`apt install xclip` or equivalent). If the clipboard tool is missing, yank/paste still works within the session via an internal register.
-
-Cursor shape (block in normal, bar in insert) needs a terminal that supports DECSCUSR escape sequences. Most modern terminals do — iTerm2, Ghostty, Alacritty, Windows Terminal, Kitty. Older macOS Terminal.app may not respond.
-
-The plugin checks GitHub for new versions once per day on startup. No other network requests, no telemetry.
+---
 
 ## Install
 
@@ -50,7 +48,31 @@ To pass options, use the tuple form in `tui.json`:
 | `modeToast` | `boolean` | `true` | Show a brief toast ("NORMAL" / "INSERT" / "VISUAL") on mode switches. Set to `false` to rely on cursor shape alone. |
 | `startMode` | `"insert"` \| `"normal"` | `"insert"` | Which mode to start in when OpenCode launches. |
 
-## What works
+## What it does
+
+Adds normal/insert mode to OpenCode's prompt input. Escape enters normal mode, `i` goes back to insert. A brief toast shows the current mode on each switch (configurable).
+
+In insert mode, typing works normally. Enter adds a newline, Ctrl+Enter submits. The file picker and autocomplete keep working: Enter picks the selected item, Escape closes the picker without leaving insert.
+
+In normal mode, keys are vim commands. Unrecognized keys get swallowed so you don't accidentally type into the prompt. `:` opens the command palette.
+
+### Overlay passthrough
+
+When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question prompts, permission prompts) vimcode steps aside. All keys pass through to the overlay until it closes.
+
+### Escape behavior
+
+First Escape in insert mode switches to normal - it won't trigger OpenCode's double-escape interrupt. So canceling a running response from insert mode takes 3 escapes: one for normal, two more for the interrupt.
+
+### Platform notes
+
+Clipboard (`y`, `yy`, `p`) uses the system clipboard: `pbcopy` on macOS, `clip.exe` on Windows, `xclip` on Linux. Linux users need `xclip` installed (`apt install xclip` or equivalent). If the clipboard tool is missing, yank/paste still works within the session via an internal register.
+
+Cursor shape (block in normal, bar in insert) needs a terminal that supports DECSCUSR escape sequences. Most modern terminals do: iTerm2, Ghostty, Alacritty, Windows Terminal, Kitty. Older macOS Terminal.app may not respond.
+
+The plugin checks GitHub for new versions once per day on startup. No other network requests, no telemetry.
+
+## Keybindings
 
 ### Motions
 
@@ -129,27 +151,18 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 | `Enter` | Submit prompt |
 | `Escape` | Pass through for double-escape interrupt |
 
-## What doesn't work yet
+## Known gaps
 
-- `V`, `Ctrl+v` -- only character-wise visual mode (`v`) is supported, no line-wise or block
-- `ciw`, `di"`, etc. (text objects) -- not yet implemented
-- `gg` -- single `g` goes to buffer start immediately, doesn't wait for a second keypress
-- `r` (replace char) -- not yet implemented
-- `dG`, `cG` -- delete/change to buffer end not yet implemented (`yG` works)
-- `e` behaves the same as `w` -- the host doesn't expose a separate "end of word" command
-- `yy` accuracy -- line position is tracked with a counter that drifts on clicks and arrow keys
-
-## Roadmap
+- `V`, `Ctrl+v` - only character-wise visual mode (`v`) is supported, no line-wise or block
+- `ciw`, `di"`, etc. (text objects) - not yet implemented
+- `gg` - single `g` goes to buffer start immediately, doesn't wait for a second keypress
+- `r` (replace char) - not yet implemented
+- `dG`, `cG` - delete/change to buffer end not yet implemented (`yG` works)
+- `e` behaves the same as `w` - the host doesn't expose a separate "end of word" command
+- `yy` accuracy - line position is tracked with a counter that drifts on clicks and arrow keys
+- No persistent mode indicator - the toast fades after about a second. Cursor shape is the persistent signal, but a status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
 
 Configurable key bindings are next once the core vim coverage stabilizes.
-
-## Overlay passthrough
-
-When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question prompts, permission prompts) vimcode steps aside. All keys pass through to the overlay until it closes.
-
-## Escape behavior
-
-First Escape in insert mode switches to normal — it won't trigger OpenCode's double-escape interrupt. So canceling a running response from insert mode takes 3 escapes: one for normal, two more for the interrupt.
 
 ## How it works
 
