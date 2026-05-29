@@ -3,7 +3,7 @@
 ## Development setup
 
 ```bash
-npm install      # install deps
+just install     # install deps
 just dev         # launch OpenCode with the plugin loaded
 just check       # run lint + tests
 ```
@@ -18,6 +18,28 @@ Running `opencode` directly in this directory won't load the plugin. You need `j
 4. Run `just check`, then `just dev` to verify.
 
 See `AGENTS.md` for operator+motion combos and other patterns.
+
+## Pull requests
+
+All changes go through pull requests — direct pushes to `main` are blocked.
+
+### Branch naming
+
+Use `type/description` with lowercase, hyphen-separated words:
+
+- `feat/replace-char`
+- `fix/escape-handling`
+- `chore/update-deps`
+
+Types match commit prefixes: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`.
+
+### Workflow
+
+1. Create a branch: `git checkout -b feat/your-feature`
+2. Make changes, run `just check` locally.
+3. Push and open a PR against `main`.
+4. CI runs `just check` (lint + tests). It must pass before merge.
+5. PRs are squash-merged. The PR title becomes the commit message on `main`.
 
 ## Commit messages
 
@@ -47,9 +69,9 @@ Releases are manual.
 6. Bump `VERSION` in `src/version.ts` to match.
 7. Update the version tag in `README.md`'s install snippet.
 8. Run `just check`.
-9. Commit: `Release vX.Y.Z: <one-line summary>`.
-10. Tag: `git tag vX.Y.Z`
-11. Push: `git push origin main vX.Y.Z`
+9. Open a PR with the release changes. Title: `Release vX.Y.Z: <one-line summary>`.
+10. After CI passes, squash-merge the PR.
+11. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
 12. Create a GitHub release: `gh release create vX.Y.Z --title "vX.Y.Z" --latest --notes "<changelog section for this version>"`
 
 ## Distribution

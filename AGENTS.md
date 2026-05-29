@@ -38,7 +38,7 @@ test/
 KeyEvent → translateKey() → handleInsertKey/handleNormalKey/handleVisualKey() → HandlerResult { consume, actions[] }
                                     ↓                                                         ↓
                              mutates VimState                                       applyActions() in index.ts
-                          (count, pendingOp, mode)                                  dispatches commands via setTimeout
+                          (count, pendingOp, pendingChar, mode)                                  dispatches commands via setTimeout
 ```
 
 Handlers in `vim.ts` are pure — they take state + key + event, mutate state, return actions. They never touch `api`. The only file that calls `api.keymap.dispatchCommand` is `index.ts`.
@@ -90,9 +90,16 @@ To add a new motion that works with operators:
 ```bash
 just dev       # Launch OpenCode with the plugin (uses OPENCODE_TUI_CONFIG=dev-tui.json)
 bun test       # Run characterization tests
+just check     # Lint + tests (used in GitHub Actions)
 ```
 
 The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin.
+
+## Git Workflow
+
+All changes go through pull requests. Direct pushes to `main` are blocked. CI (`just check`) must pass before merge. PRs are squash-merged — the PR title becomes the commit on `main`.
+
+Branch naming: `type/description` — e.g. `feat/replace-char`, `fix/escape-handling`. Types match commit prefixes (`feat`, `fix`, `refactor`, `chore`, `test`, `docs`).
 
 ## Code Conventions
 

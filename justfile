@@ -2,7 +2,7 @@
 
 # Install dependencies
 install:
-    npm install
+    bun install
 
 # Run tests
 test:
@@ -10,7 +10,7 @@ test:
 
 # Check formatting and lint
 lint:
-    bunx biome check .
+    bunx biome ci .
 
 # Auto-fix formatting and lint
 lint-fix:
