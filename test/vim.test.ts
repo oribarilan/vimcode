@@ -657,15 +657,8 @@ describe("plugin init", () => {
       kv: {}, // empty object — the scenario that crashed v0.7.0
     };
 
-    // Should not throw. The cursor interval writes to stdout,
-    // so we stub it to avoid noise in test output.
-    const origWrite = process.stdout.write;
-    process.stdout.write = () => true;
-    try {
-      // biome-ignore lint/suspicious/noExplicitAny: mock API doesn't match full plugin types
-      await plugin.tui(api as any, undefined, undefined as any);
-    } finally {
-      process.stdout.write = origWrite;
-    }
+    // Should not throw with a sparse mock API.
+    // biome-ignore lint/suspicious/noExplicitAny: mock API doesn't match full plugin types
+    await plugin.tui(api as any, undefined, undefined as any);
   });
 });

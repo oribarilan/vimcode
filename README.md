@@ -68,7 +68,7 @@ First Escape in insert mode switches to normal - it won't trigger OpenCode's dou
 
 Clipboard (`y`, `yy`, `p`) uses the system clipboard: `pbcopy` on macOS, `clip.exe` on Windows, `xclip` on Linux. Linux users need `xclip` installed (`apt install xclip` or equivalent). If the clipboard tool is missing, yank/paste still works within the session via an internal register.
 
-Cursor shape (block in normal, bar in insert) needs a terminal that supports DECSCUSR escape sequences. Most modern terminals do: iTerm2, Ghostty, Alacritty, Windows Terminal, Kitty. Older macOS Terminal.app may not respond.
+Cursor shape (block in normal, bar in insert) works across all terminals. No special terminal support required.
 
 The plugin checks GitHub for new versions once per day on startup. No other network requests, no telemetry.
 

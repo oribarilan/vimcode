@@ -18,8 +18,36 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 - The plugin `package.json` needs `exports: { "./tui": "./src/index.ts" }` — the loader checks `./tui`, not `.`.
 - `dispatchCommand()` from inside a `key:before` intercept doesn't work for cursor movement. Wrap in `setTimeout(..., 0)` to break out of the intercept stack.
 - `registerLayer` with `activeWhen` using SolidJS signals requires `reactiveMatcherFromSignal` from `@opentui/keymap/solid`. Plain `() => signal()` doesn't trigger re-evaluation. We chose intercepts instead of layers to avoid this.
-- The plugin API exposes no cursor position. `api.prompt.current.input` gives text content only. No `setCursor`, no `getSelection`. This limits what vim operations we can implement.
 - **No external runtime imports in distributed plugins.** OpenCode's Bun runtime module plugin (`onResolve` hooks for `solid-js`, `@opentui/solid`, etc.) doesn't intercept imports from files loaded from `~/.cache/opencode/packages/`. Any import from `solid-js` or `@opentui/solid` fails with `Cannot find module`. Use only the `api` parameter and local modules. Mode feedback uses `api.ui.toast()` instead of a slot indicator. This limitation affects all git/npm-installed TUI plugins, not just vimcode.
+
+### Editor widget API
+
+`api.renderer.currentFocusedEditor` (same object as `currentFocusedRenderable`) exposes the full underlying Textarea widget. This is not part of the documented plugin API but is stable and available at runtime. The current codebase only uses `plainText`, `insertText()`, and `editorView` — most of the surface below is untapped.
+
+**Top-level properties (read/write):**
+- `cursorOffset: number` — absolute cursor position, readable and writable
+- `visualCursor: { visualRow, visualCol, logicalRow, logicalCol, offset }` — full cursor coordinates (read-only in practice)
+- `cursorStyle: { style: "block" | "line" | "underline" | "default", blinking: boolean }` — set directly, no DECSCUSR escape needed
+- `plainText: string` — buffer content
+- `selectionBg: RGBA`, `selectionFg: RGBA` — custom selection highlight colors
+
+**Top-level methods:**
+- `moveCursorLeft/Right/Up/Down()` — direct cursor movement
+- `setSelection(start, end)`, `setSelectionInclusive(start, end)`, `clearSelection()` — selection control
+- `gotoVisualLineEnd()`, `gotoLineEnd()` — line boundary jumps
+- `insertText(text)` — insert at cursor
+
+**editorView methods (lower-level):**
+- `setCursorByOffset(n)` — position cursor by offset
+- `getNextWordBoundary()`, `getPrevWordBoundary()` — word boundary detection (enables proper `e` vs `w`)
+- `getEOL()`, `getVisualSOL()`, `getVisualEOL()` — line boundary info
+- `getLineInfo()`, `getLogicalLineInfo()` — line metadata
+- `getCursor()`, `getVisualCursor()`, `getText()` — read state
+- `getSelectedText()`, `deleteSelectedText()` — selection operations
+- `moveUpVisual()`, `moveDownVisual()` — visual line movement
+- `setSelection()`, `resetSelection()`, `hasSelection()` — selection management
+
+This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, and accurate line operations feasible. The current `setTimeout` + `dispatchCommand` approach can be replaced with direct widget manipulation for most operations.
 
 ## Architecture
 
@@ -81,9 +109,8 @@ To add a new motion that works with operators:
 ### Known limitations
 
 - **`g` fires immediately as `input.buffer.home`** — should wait for a second `g` (needs sequence state). Single `g` = go to top, which is wrong for vim.
-- **`lineTracker` drifts** — only j/k/G/g/o update it. Clicks, arrow keys, word motions don't. `yy` can yank the wrong line.
-- **No cursor access** — the plugin API doesn't expose cursor position. Text objects (`ciw`, `di"`) are not feasible. Character-wise visual mode works via `input.select.*` commands but has no cursor position feedback. Input text is read from `api.renderer.currentFocusedEditor.plainText` (the TUI plugin API has no `api.prompt`).
-- **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec.
+- **`lineTracker` drifts** — only j/k/G/g/o update it. Clicks, arrow keys, word motions don't. `yy` can yank the wrong line. Solvable now via `cursorOffset` + `visualCursor` — the tracker can be replaced with direct cursor reads.
+- **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec. Many of these can now be replaced with direct widget manipulation (e.g., setting `cursorOffset`, calling `insertText`).
 
 ## Development
 
