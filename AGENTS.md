@@ -22,7 +22,7 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 
 ### Editor widget API
 
-`api.renderer.currentFocusedEditor` (same object as `currentFocusedRenderable`) exposes the full underlying Textarea widget. This is not part of the documented plugin API but is stable and available at runtime. The current codebase only uses `plainText`, `insertText()`, and `editorView` — most of the surface below is untapped.
+`api.renderer.currentFocusedEditor` (same object as `currentFocusedRenderable`) exposes the underlying Textarea widget. Not part of the documented plugin API, but stable and available at runtime. The codebase currently uses `plainText`, `cursorOffset`, `visualCursor`, `cursorStyle`, `insertText()`, and `editorView`. The rest of the surface below is available but unused.
 
 **Top-level properties (read/write):**
 - `cursorOffset: number` — absolute cursor position, readable and writable
@@ -53,12 +53,12 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (134 lines)  Plugin entry: intercept registration, action application
-  vim.ts         (469 lines)  Pure vim engine: state, handlers, command tables, types
+  index.ts       (136 lines)  Plugin entry: intercept registration, action application
+  vim.ts         (459 lines)  Pure vim engine: state, handlers, command tables, types
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  vim.test.ts    (671 lines)  Characterization tests for all key handling branches
+  vim.test.ts    (676 lines)  Characterization tests for all key handling branches
 ```
 
 **Data flow:**
@@ -109,7 +109,6 @@ To add a new motion that works with operators:
 ### Known limitations
 
 - **`g` fires immediately as `input.buffer.home`** — should wait for a second `g` (needs sequence state). Single `g` = go to top, which is wrong for vim.
-- **`lineTracker` drifts** — only j/k/G/g/o update it. Clicks, arrow keys, word motions don't. `yy` can yank the wrong line. Solvable now via `cursorOffset` + `visualCursor` — the tracker can be replaced with direct cursor reads.
 - **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec. Many of these can now be replaced with direct widget manipulation (e.g., setting `cursorOffset`, calling `insertText`).
 
 ## Development
@@ -123,6 +122,8 @@ just check     # Lint + tests (used in GitHub Actions)
 The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin.
 
 ## Git Workflow
+
+**Never commit, push, or create PRs unless explicitly asked.** Present the changes and wait for the human to decide when to commit.
 
 All changes go through pull requests. Direct pushes to `main` are blocked. CI (`just check`) must pass before merge. PRs are squash-merged — the PR title becomes the commit on `main`.
 

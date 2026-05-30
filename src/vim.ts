@@ -20,7 +20,6 @@ export type VimState = {
   pendingOp: Operator;
   pendingChar: "r" | null;
   count: number;
-  lineTracker: number;
   yankRegister: string;
 };
 
@@ -36,6 +35,7 @@ export type KeyEvent = {
 export type PromptAccess = {
   getLine: (n: number) => string;
   getLineCount: () => number;
+  getCursorLine: () => number;
 };
 
 export const MOTIONS: Record<string, string> = {
@@ -81,7 +81,7 @@ const PASS: HandlerResult = { consume: false, actions: [] };
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
 
 export function createVimState(): VimState {
-  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, lineTracker: 0, yankRegister: "" };
+  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "" };
 }
 
 export function translateKey(ev: KeyEvent): string {
@@ -99,7 +99,6 @@ export function translateKey(ev: KeyEvent): string {
 export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent): HandlerResult {
   if (ev.name === "escape") {
     state.mode = "normal";
-    state.lineTracker = 0;
     return { consume: true, actions: [{ type: "mode", mode: "normal" }] };
   }
   if (ev.name === "return" && ev.ctrl) {
@@ -217,8 +216,9 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     if (state.pendingOp === key) {
       const n = consumeCount(state);
       if (key === "y") {
+        const cursorLine = prompt.getCursorLine();
         const lines: string[] = [];
-        for (let i = 0; i < n; i++) lines.push(prompt.getLine(state.lineTracker + i));
+        for (let i = 0; i < n; i++) lines.push(prompt.getLine(cursorLine + i));
         const text = `${lines.join("\n")}\n`;
         state.yankRegister = text;
         actions.push({ type: "yank", text });
@@ -295,14 +295,12 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       return { consume: true, actions };
     }
     pushN(actions, MOTIONS[key], n);
-    updateLineTracker(state, key, n, prompt);
     return { consume: true, actions };
   }
 
   // gg (buffer home)
   if (key === "g") {
     actions.push({ type: "cmd", cmd: "input.buffer.home" });
-    state.lineTracker = 0;
     resetPending(state);
     return { consume: true, actions };
   }
@@ -351,7 +349,6 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   if (key === "o") {
     actions.push({ type: "cmd", cmd: "input.line.end" });
     actions.push({ type: "cmd", cmd: "input.newline" });
-    state.lineTracker++;
     enterInsert(state, actions);
     return { consume: true, actions };
   }
@@ -455,13 +452,6 @@ function exitVisual(state: VimState, actions: Action[]) {
 
 function pushN(actions: Action[], cmd: string, n: number) {
   for (let i = 0; i < n; i++) actions.push({ type: "cmd", cmd });
-}
-
-function updateLineTracker(state: VimState, key: string, n: number, prompt: PromptAccess) {
-  if (key === "j") state.lineTracker += n;
-  else if (key === "k") state.lineTracker = Math.max(0, state.lineTracker - n);
-  else if (key === "G") state.lineTracker = prompt.getLineCount() - 1;
-  else if (key === "g") state.lineTracker = 0;
 }
 
 function isInputEmpty(prompt: PromptAccess): boolean {

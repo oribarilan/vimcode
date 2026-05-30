@@ -159,7 +159,6 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 - `gg` - single `g` goes to buffer start immediately, doesn't wait for a second keypress
 - `dG`, `cG` - delete/change to buffer end not yet implemented (`yG` works)
 - `e` behaves the same as `w` - the host doesn't expose a separate "end of word" command
-- `yy` accuracy - line position is tracked with a counter that drifts on clicks and arrow keys
 - No persistent mode indicator - the toast fades after about a second. Cursor shape is the persistent signal, but a status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
 
 Configurable key bindings are next once the core vim coverage stabilizes.

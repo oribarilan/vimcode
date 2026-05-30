@@ -25,11 +25,13 @@ const ev = (name: string, opts?: { shift?: boolean; ctrl?: boolean; meta?: boole
 const mockPrompt: PromptAccess = {
   getLine: (n) => ["hello world", "second line", "third line"][n] ?? "",
   getLineCount: () => 3,
+  getCursorLine: () => 0,
 };
 
 const emptyPrompt: PromptAccess = {
   getLine: () => "",
   getLineCount: () => 1,
+  getCursorLine: () => 0,
 };
 
 let state: VimState;
@@ -406,12 +408,10 @@ describe("handleNormalKey — insert entries", () => {
     expect(state.mode).toBe("insert");
   });
 
-  it("o dispatches input.line.end + input.newline, enters insert, lineTracker increments", () => {
-    const tracker = state.lineTracker;
+  it("o dispatches input.line.end + input.newline, enters insert", () => {
     const r = handleNormalKey(state, "o", ev("o"), mockPrompt);
     expect(cmds(r.actions)).toEqual(["input.line.end", "input.newline"]);
     expect(state.mode).toBe("insert");
-    expect(state.lineTracker).toBe(tracker + 1);
   });
 
   it("O dispatches input.line.home + input.newline + input.move.up, enters insert", () => {
@@ -421,30 +421,42 @@ describe("handleNormalKey — insert entries", () => {
   });
 });
 
-// ── handleNormalKey — line tracker ──────────────────────────
+// ── handleNormalKey — yy uses cursor position ─────────────
 
-describe("handleNormalKey — line tracker", () => {
-  it("j increments lineTracker", () => {
-    const before = state.lineTracker;
-    handleNormalKey(state, "j", ev("j"), mockPrompt);
-    expect(state.lineTracker).toBe(before + 1);
+describe("handleNormalKey — yy uses cursor position", () => {
+  it("yy yanks the line at getCursorLine, not a tracked counter", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 1,
+    };
+    handleNormalKey(state, "y", ev("y"), prompt);
+    const r = handleNormalKey(state, "y", ev("y"), prompt);
+    expect(state.yankRegister).toBe("second\n");
+    expect(r.actions.some((a) => a.type === "yank" && a.text === "second\n")).toBe(true);
   });
 
-  it("k clamps lineTracker at 0", () => {
-    state.lineTracker = 0;
-    handleNormalKey(state, "k", ev("k"), mockPrompt);
-    expect(state.lineTracker).toBe(0);
+  it("2yy from cursor line 1 yanks lines 1 and 2", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 1,
+    };
+    handleNormalKey(state, "2", ev("2"), prompt);
+    handleNormalKey(state, "y", ev("y"), prompt);
+    const r = handleNormalKey(state, "y", ev("y"), prompt);
+    expect(state.yankRegister).toBe("second\nthird\n");
   });
 
-  it("G sets lineTracker to last line", () => {
-    handleNormalKey(state, "G", ev("g", { shift: true }), mockPrompt);
-    expect(state.lineTracker).toBe(2); // getLineCount() - 1
-  });
-
-  it("g resets lineTracker to 0", () => {
-    state.lineTracker = 2;
-    handleNormalKey(state, "g", ev("g"), mockPrompt);
-    expect(state.lineTracker).toBe(0);
+  it("yy on last line yanks that line", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 2,
+    };
+    handleNormalKey(state, "y", ev("y"), prompt);
+    const r = handleNormalKey(state, "y", ev("y"), prompt);
+    expect(state.yankRegister).toBe("third\n");
   });
 });
 

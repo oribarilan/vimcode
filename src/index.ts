@@ -13,6 +13,7 @@ const plugin: TuiPluginModule = {
     const prompt = {
       getLine: (n: number) => getInputText().split("\n")[n] ?? "",
       getLineCount: () => getInputText().split("\n").length,
+      getCursorLine: () => api.renderer?.currentFocusedEditor?.visualCursor?.logicalRow ?? 0,
     };
 
     // api.prompt doesn't exist on the TUI plugin API. The actual text lives

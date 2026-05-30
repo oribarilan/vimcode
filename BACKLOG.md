@@ -1,10 +1,10 @@
 # Backlog
 
-Prioritized list of improvements for vimcode. Items within each category are ordered by priority.
+Ordered by priority within each category.
 
 ## Stability / Bug fixes
 
-1. **Replace `lineTracker` with direct cursor reads.** `lineTracker` drifts whenever the cursor moves by means other than j/k/G/g/o (clicks, arrow keys, word motions). This causes `yy` to yank the wrong line. `visualCursor.logicalRow` gives the real line — read it directly.
+1. ~~**Replace `lineTracker` with direct cursor reads.**~~ Done.
 
 2. **Fix `gg` requiring two keypresses.** Single `g` fires `input.buffer.home` immediately. Real vim waits for a second `g`. Add pending-key state for `g` with a timeout or second-key check, similar to how `r` already works with `pendingChar`.
 
@@ -16,9 +16,9 @@ Prioritized list of improvements for vimcode. Items within each category are ord
 
 1. ~~**Set cursor style via `cursorStyle` property instead of DECSCUSR escapes.**~~ Done.
 
-2. **Replace `dispatchCommand`-based motions with direct cursor manipulation.** Motions like h/l/j/k/w/b can use `moveCursorLeft/Right/Up/Down()` or write `cursorOffset` directly instead of dispatching `input.move.*` commands through setTimeout. Reduces latency and eliminates re-entrancy concerns.
+2. **Replace `dispatchCommand`-based motions with direct cursor manipulation.** Motions like h/l/j/k/w/b can call `moveCursorLeft/Right/Up/Down()` or write `cursorOffset` directly instead of dispatching `input.move.*` commands through setTimeout.
 
-3. **Replace selection commands with `setSelection`/`setSelectionInclusive`.** Visual mode currently dispatches `input.select.*` commands. The widget exposes `setSelection(start, end)` and `setSelectionInclusive(start, end)` — use these for immediate, accurate selections.
+3. **Replace selection commands with `setSelection`/`setSelectionInclusive`.** Visual mode currently dispatches `input.select.*` commands. The widget has `setSelection(start, end)` and `setSelectionInclusive(start, end)`, which would be immediate and accurate.
 
 4. **Replace `yankSelection` setTimeout with synchronous read.** The current `yankSelection` action defers to let select commands finish. With direct `setSelection` + `getSelectedText()`, the yank can happen synchronously.
 
@@ -26,7 +26,7 @@ Prioritized list of improvements for vimcode. Items within each category are ord
 
 ## New features
 
-1. **Text objects (`ciw`, `diw`, `yiw`, `ci"`, `di"`, `da(`, etc.).** Now feasible with cursor position access. Read `plainText` + `cursorOffset`, compute the object range in pure logic, apply the edit via `setSelection` + `deleteSelectedText` or direct text manipulation. Start with word and quote objects, then add bracket/paren.
+1. **Text objects (`ciw`, `diw`, `yiw`, `ci"`, `di"`, `da(`, etc.).** Feasible now that we have cursor position access. Read `plainText` + `cursorOffset`, compute the object range in pure logic, apply the edit via `setSelection` + `deleteSelectedText` or direct text manipulation. Start with word and quote objects, then add bracket/paren.
 
 2. **Visual-line mode (`V`).** The widget's `getLineInfo()` and `setSelection()` make line-wise selection straightforward. Extend the existing visual mode with a `visual-line` variant.
 
@@ -38,13 +38,13 @@ Prioritized list of improvements for vimcode. Items within each category are ord
 
 6. **Custom keymaps.** User-configurable key remapping per mode via `tui.json` options. Common requests: `jk`/`kj` to exit insert mode, `Y` mapped to `y$`. Needs multi-key sequence support with a configurable timeout.
 
-7. **Pending key display.** Show partial key sequences (like `d` waiting for a motion, or the count accumulator) somewhere visible. Currently these are invisible — the user doesn't know vimcode is waiting for more input.
+7. **Pending key display.** Show partial key sequences (like `d` waiting for a motion, or the count accumulator) somewhere visible. Right now these are invisible, so the user doesn't know vimcode is waiting for more input.
 
-8. **Yank flash.** Brief highlight on yanked text using `selectionBg`/`selectionFg` with a short timer (200-300ms). Gives visual confirmation like Neovim's `vim.highlight.on_yank()`.
+8. **Yank flash.** Brief highlight on yanked text using `selectionBg`/`selectionFg` with a short timer (200-300ms), like Neovim's `vim.highlight.on_yank()`.
 
 9. **Completion-aware j/k.** When the cursor follows `@` or `/` (autocomplete triggers), normal-mode j/k should navigate the completion popup rather than move the cursor.
 
-10. **Persistent mode indicator.** Replace the fading toast with a persistent visual. Blocked by the no-external-imports limitation for slot-based UI, but could potentially use `api.renderer.keyInput.processParsedKey()` or find another approach.
+10. **Persistent mode indicator.** Replace the fading toast with something persistent. Blocked by the no-external-imports limitation for slot-based UI. Might be possible via `api.renderer.keyInput.processParsedKey()` or another workaround.
 
 ## Polish
 

@@ -10,7 +10,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Changed
 
-- Cursor shape now uses the editor widget's `cursorStyle` property instead of writing DECSCUSR escape sequences to stdout. Works in terminals that don't support DECSCUSR (e.g. macOS Terminal.app).
+- Cursor shape uses the editor widget's `cursorStyle` property instead of writing DECSCUSR escape sequences to stdout. Works in terminals without DECSCUSR support (e.g. macOS Terminal.app).
+
+### Fixed
+
+- `yy` reads the cursor position directly from the editor widget instead of a line counter. The old counter drifted on clicks, arrow keys, and word motions, so `yy` would yank the wrong line.
 
 ## [0.9.0] — 2026-05-29
 
