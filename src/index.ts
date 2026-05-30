@@ -14,6 +14,8 @@ const plugin: TuiPluginModule = {
       getLine: (n: number) => getInputText().split("\n")[n] ?? "",
       getLineCount: () => getInputText().split("\n").length,
       getCursorLine: () => api.renderer?.currentFocusedEditor?.visualCursor?.logicalRow ?? 0,
+      getCursorOffset: () => api.renderer?.currentFocusedEditor?.cursorOffset ?? 0,
+      getPlainText: () => getInputText(),
     };
 
     // api.prompt doesn't exist on the TUI plugin API. The actual text lives
@@ -59,6 +61,16 @@ const plugin: TuiPluginModule = {
           case "clearSelection":
             api.renderer?.currentFocusedEditor?.editorView?.resetSelection?.();
             break;
+          case "cursorTo": {
+            const editor = api.renderer?.currentFocusedEditor;
+            if (editor) editor.cursorOffset = action.offset;
+            break;
+          }
+          case "selectRange": {
+            const editor = api.renderer?.currentFocusedEditor;
+            editor?.setSelectionInclusive?.(action.start, action.end);
+            break;
+          }
         }
       }
     }

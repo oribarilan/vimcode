@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import {
   type Action,
   createVimState,
+  endOfWord,
   handleInsertKey,
   handleNormalKey,
   handleVisualKey,
@@ -12,6 +13,16 @@ import {
 
 function cmds(actions: Action[]): string[] {
   return actions.filter((a): a is Extract<Action, { type: "cmd" }> => a.type === "cmd").map((a) => a.cmd);
+}
+
+function cursorTos(actions: Action[]): number[] {
+  return actions.filter((a): a is Extract<Action, { type: "cursorTo" }> => a.type === "cursorTo").map((a) => a.offset);
+}
+
+function selectRanges(actions: Action[]): Array<{ start: number; end: number }> {
+  return actions
+    .filter((a): a is Extract<Action, { type: "selectRange" }> => a.type === "selectRange")
+    .map((a) => ({ start: a.start, end: a.end }));
 }
 
 const ev = (name: string, opts?: { shift?: boolean; ctrl?: boolean; meta?: boolean; super?: boolean }) => ({
@@ -26,12 +37,16 @@ const mockPrompt: PromptAccess = {
   getLine: (n) => ["hello world", "second line", "third line"][n] ?? "",
   getLineCount: () => 3,
   getCursorLine: () => 0,
+  getCursorOffset: () => 0,
+  getPlainText: () => "hello world\nsecond line\nthird line",
 };
 
 const emptyPrompt: PromptAccess = {
   getLine: () => "",
   getLineCount: () => 1,
   getCursorLine: () => 0,
+  getCursorOffset: () => 0,
+  getPlainText: () => "",
 };
 
 let state: VimState;
@@ -39,6 +54,59 @@ let state: VimState;
 beforeEach(() => {
   state = createVimState();
   state.mode = "normal";
+});
+
+// ── endOfWord ──────────────────────────────────────────────
+
+describe("endOfWord", () => {
+  it("from start of word, moves to last char", () => {
+    expect(endOfWord("hello world", 0)).toBe(4);
+  });
+
+  it("from middle of word, moves to last char", () => {
+    expect(endOfWord("hello world", 2)).toBe(4);
+  });
+
+  it("from end of word, moves to end of next word", () => {
+    expect(endOfWord("hello world", 4)).toBe(10);
+  });
+
+  it("from whitespace, skips to end of next word", () => {
+    expect(endOfWord("hello world", 5)).toBe(10);
+  });
+
+  it("stops at punctuation boundary", () => {
+    expect(endOfWord("hello.world", 0)).toBe(4);
+  });
+
+  it("from punctuation, moves to end of punctuation run", () => {
+    expect(endOfWord("hello...world", 5)).toBe(7);
+  });
+
+  it("from end of punctuation, moves to end of next word", () => {
+    expect(endOfWord("a.b", 1)).toBe(2);
+  });
+
+  it("at end of text, stays put", () => {
+    expect(endOfWord("hello", 4)).toBe(4);
+  });
+
+  it("handles count > 1", () => {
+    expect(endOfWord("one two three", 0, 2)).toBe(6);
+  });
+
+  it("handles multiple whitespace", () => {
+    expect(endOfWord("hello   world", 0)).toBe(4);
+    expect(endOfWord("hello   world", 4)).toBe(12);
+  });
+
+  it("handles newlines as whitespace", () => {
+    expect(endOfWord("hello\nworld", 4)).toBe(10);
+  });
+
+  it("clamps at end of text", () => {
+    expect(endOfWord("hi", 0, 5)).toBe(1);
+  });
 });
 
 // ── translateKey ────────────────────────────────────────────
@@ -155,6 +223,53 @@ describe("handleNormalKey — motions", () => {
   it("g dispatches input.buffer.home", () => {
     const r = handleNormalKey(state, "g", ev("g"), mockPrompt);
     expect(cmds(r.actions)).toEqual(["input.buffer.home"]);
+  });
+});
+
+// ── handleNormalKey — e motion ─────────────────────────────
+
+describe("handleNormalKey — e motion", () => {
+  const ePrompt: PromptAccess = {
+    getLine: (n) => ["hello world", "second line"][n] ?? "",
+    getLineCount: () => 2,
+    getCursorLine: () => 0,
+    getCursorOffset: () => 0,
+    getPlainText: () => "hello world\nsecond line",
+  };
+
+  it("e returns cursorTo at end of current word", () => {
+    const r = handleNormalKey(state, "e", ev("e"), ePrompt);
+    expect(r.consume).toBe(true);
+    expect(cursorTos(r.actions)).toEqual([4]);
+  });
+
+  it("2e returns cursorTo at end of second word", () => {
+    handleNormalKey(state, "2", ev("2"), ePrompt);
+    const r = handleNormalKey(state, "e", ev("e"), ePrompt);
+    expect(cursorTos(r.actions)).toEqual([10]);
+  });
+
+  it("de deletes from cursor to end of word", () => {
+    handleNormalKey(state, "d", ev("d"), ePrompt);
+    const r = handleNormalKey(state, "e", ev("e"), ePrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+    expect(cmds(r.actions)).toContain("input.backspace");
+    expect(state.mode).toBe("normal");
+  });
+
+  it("ce deletes from cursor to end of word and enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), ePrompt);
+    const r = handleNormalKey(state, "e", ev("e"), ePrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+    expect(cmds(r.actions)).toContain("input.backspace");
+    expect(state.mode).toBe("insert");
+  });
+
+  it("ye yanks from cursor to end of word", () => {
+    handleNormalKey(state, "y", ev("y"), ePrompt);
+    const r = handleNormalKey(state, "e", ev("e"), ePrompt);
+    expect(state.yankRegister).toBe("hello");
+    expect(r.actions.some((a) => a.type === "yank" && a.text === "hello")).toBe(true);
   });
 });
 

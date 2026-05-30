@@ -8,7 +8,7 @@ Ordered by priority within each category.
 
 2. **Fix `gg` requiring two keypresses.** Single `g` fires `input.buffer.home` immediately. Real vim waits for a second `g`. Add pending-key state for `g` with a timeout or second-key check, similar to how `r` already works with `pendingChar`.
 
-3. **Fix `e` behaving identically to `w`.** `editorView.getNextWordBoundary()` is available. Use it to implement proper end-of-word motion that stops at the last character of the current word rather than the first character of the next.
+3. ~~**Fix `e` behaving identically to `w`.**~~ Done.
 
 4. **Eliminate `setTimeout` command dispatch for operations that can use direct manipulation.** Multi-command sequences like `O` (home + newline + up) depend on setTimeout ordering. Replace with direct buffer manipulation (`cursorOffset` writes, `insertText()`) where possible. Keep setTimeout only for commands that genuinely need `dispatchCommand` (submit, undo/redo, history navigation).
 

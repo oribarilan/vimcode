@@ -8,7 +8,9 @@ export type Action =
   | { type: "yank"; text: string }
   | { type: "insertText"; text: string }
   | { type: "yankSelection" }
-  | { type: "clearSelection" };
+  | { type: "clearSelection" }
+  | { type: "cursorTo"; offset: number }
+  | { type: "selectRange"; start: number; end: number };
 
 export type HandlerResult = {
   consume: boolean;
@@ -36,6 +38,8 @@ export type PromptAccess = {
   getLine: (n: number) => string;
   getLineCount: () => number;
   getCursorLine: () => number;
+  getCursorOffset: () => number;
+  getPlainText: () => string;
 };
 
 export const MOTIONS: Record<string, string> = {
@@ -45,7 +49,6 @@ export const MOTIONS: Record<string, string> = {
   k: "input.move.up",
   w: "input.word.forward",
   b: "input.word.backward",
-  e: "input.word.forward",
   "0": "input.line.home",
   "^": "input.line.home",
   $: "input.line.end",
@@ -69,7 +72,6 @@ export const SELECT_MOTIONS: Record<string, string> = {
 const DELETE_MOTION: Record<string, string> = {
   w: "input.delete.word.forward",
   b: "input.delete.word.backward",
-  e: "input.delete.word.forward",
   $: "input.delete.to.line.end",
   "0": "input.delete.to.line.start",
   "^": "input.delete.to.line.start",
@@ -82,6 +84,35 @@ const _CONSUME: HandlerResult = { consume: true, actions: [] };
 
 export function createVimState(): VimState {
   return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "" };
+}
+
+export function endOfWord(text: string, offset: number, count = 1): number {
+  const len = text.length;
+  if (len === 0) return 0;
+  let pos = offset;
+  for (let step = 0; step < count; step++) {
+    // If inside a word/punct run, advance one to start looking for next end
+    if (pos < len - 1 && charKind(text[pos]) !== "space") {
+      pos++;
+    }
+    // Skip whitespace
+    while (pos < len && isWhitespace(text[pos])) pos++;
+    if (pos >= len) return len - 1;
+    // Find end of current word class run
+    const kind = charKind(text[pos]);
+    while (pos + 1 < len && charKind(text[pos + 1]) === kind) pos++;
+  }
+  return Math.min(pos, len - 1);
+}
+
+function isWhitespace(ch: string): boolean {
+  return ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
+}
+
+function charKind(ch: string): "word" | "punct" | "space" {
+  if (isWhitespace(ch)) return "space";
+  if (/\w/.test(ch)) return "word";
+  return "punct";
 }
 
 export function translateKey(ev: KeyEvent): string {
@@ -246,6 +277,25 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return { consume: true, actions };
   }
 
+  // Pending operator + e (end-of-word needs special handling)
+  if (state.pendingOp && key === "e") {
+    const n = consumeCount(state);
+    const offset = prompt.getCursorOffset();
+    const target = endOfWord(prompt.getPlainText(), offset, n);
+    if (state.pendingOp === "y") {
+      const text = prompt.getPlainText().slice(offset, target + 1);
+      state.yankRegister = text;
+      actions.push({ type: "yank", text });
+      resetPending(state);
+    } else {
+      actions.push({ type: "selectRange", start: offset, end: target });
+      actions.push({ type: "cmd", cmd: "input.backspace" });
+      if (state.pendingOp === "c") enterInsert(state, actions);
+      else resetPending(state);
+    }
+    return { consume: true, actions };
+  }
+
   // Pending operator + motion
   if (state.pendingOp && key in MOTIONS) {
     const n = consumeCount(state);
@@ -283,6 +333,14 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     }
 
     resetPending(state);
+    return { consume: true, actions };
+  }
+
+  // Standalone e (end-of-word)
+  if (key === "e") {
+    const n = consumeCount(state);
+    const target = endOfWord(prompt.getPlainText(), prompt.getCursorOffset(), n);
+    actions.push({ type: "cursorTo", offset: target });
     return { consume: true, actions };
   }
 

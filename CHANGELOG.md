@@ -15,6 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Fixed
 
 - `yy` reads the cursor position directly from the editor widget instead of a line counter. The old counter drifted on clicks, arrow keys, and word motions, so `yy` would yank the wrong line.
+- `e` moves to end of word instead of behaving like `w`. `de`, `ce`, and `ye` operate on the correct range too.
 
 ## [0.9.0] — 2026-05-29
 

@@ -53,12 +53,12 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (136 lines)  Plugin entry: intercept registration, action application
-  vim.ts         (459 lines)  Pure vim engine: state, handlers, command tables, types
+  index.ts       (148 lines)  Plugin entry: intercept registration, action application
+  vim.ts         (517 lines)  Pure vim engine: state, handlers, command tables, types
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  vim.test.ts    (676 lines)  Characterization tests for all key handling branches
+  vim.test.ts    (791 lines)  Characterization tests for all key handling branches
 ```
 
 **Data flow:**
@@ -76,8 +76,11 @@ Handlers in `vim.ts` are pure — they take state + key + event, mutate state, r
 - `{ type: "mode", mode: Mode }` — updates the SolidJS signal for the indicator
 - `{ type: "toast", message: string }` — shows a notification
 - `{ type: "yank", text: string }` — writes text to system clipboard via `writeClipboard()`
+- `{ type: "insertText", text: string }` — inserts text at cursor via `editor.insertText()`
 - `{ type: "yankSelection" }` — reads selected text from the focused editor, stores in yank register and clipboard
 - `{ type: "clearSelection" }` — clears the textarea's selection via `editorView.resetSelection()`
+- `{ type: "cursorTo", offset: number }` — sets `editor.cursorOffset` directly
+- `{ type: "selectRange", start: number, end: number }` — calls `editor.setSelectionInclusive(start, end)`
 
 ### Adding a keybinding
 

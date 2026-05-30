@@ -79,7 +79,7 @@ The plugin checks GitHub for new versions once per day on startup. No other netw
 | Key | Action |
 |-----|--------|
 | `h` `j` `k` `l` | Left, down, up, right |
-| `w` `b` `e` | Word forward, backward, forward |
+| `w` `b` `e` | Word forward, backward, end of word |
 | `0` `^` | Line start |
 | `$` | Line end |
 | `G` | Buffer end |
@@ -158,7 +158,6 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 - `ciw`, `di"`, etc. (text objects) - not yet implemented
 - `gg` - single `g` goes to buffer start immediately, doesn't wait for a second keypress
 - `dG`, `cG` - delete/change to buffer end not yet implemented (`yG` works)
-- `e` behaves the same as `w` - the host doesn't expose a separate "end of word" command
 - No persistent mode indicator - the toast fades after about a second. Cursor shape is the persistent signal, but a status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
 
 Configurable key bindings are next once the core vim coverage stabilizes.
