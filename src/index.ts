@@ -62,17 +62,18 @@ const plugin: TuiPluginModule = {
       }
     }
 
-    // The Textarea's renderCursor() hardcodes "block" on every frame.
-    // api.renderer.addPostProcessFn would be ideal but isn't reliably
-    // available for git-installed plugins. Instead, re-apply the correct
-    // DECSCUSR escape on a short interval. 4 bytes at 100ms is negligible.
-    const cursorInterval = setInterval(() => {
-      process.stdout.write(state.mode === "insert" ? "\x1b[6 q" : "\x1b[2 q");
-    }, 100);
-    api.lifecycle?.onDispose?.(() => {
-      clearInterval(cursorInterval);
-      process.stdout.write("\x1b[2 q");
-    });
+    function syncCursorStyle() {
+      const editor = api.renderer?.currentFocusedEditor;
+      if (!editor) return;
+      editor.cursorStyle = { style: state.mode === "insert" ? "line" : "block", blinking: true };
+    }
+
+    // The Textarea resets cursorStyle during rendering, so re-apply on a
+    // short interval. Setting a property is cheaper than the previous
+    // approach of writing DECSCUSR escape sequences to stdout, and works
+    // in terminals that don't support DECSCUSR (e.g. macOS Terminal.app).
+    const cursorInterval = setInterval(syncCursorStyle, 100);
+    api.lifecycle?.onDispose?.(() => clearInterval(cursorInterval));
 
     if (options?.updateCheck !== false) {
       checkForUpdate((opts) => api.ui?.toast?.(opts), api.kv);

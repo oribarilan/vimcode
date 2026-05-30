@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Changed
+
+- Cursor shape now uses the editor widget's `cursorStyle` property instead of writing DECSCUSR escape sequences to stdout. Works in terminals that don't support DECSCUSR (e.g. macOS Terminal.app).
+
 ## [0.9.0] — 2026-05-29
 
 ### Added
