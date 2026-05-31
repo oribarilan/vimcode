@@ -9,6 +9,8 @@ export type Action =
   | { type: "insertText"; text: string }
   | { type: "yankSelection" }
   | { type: "clearSelection" }
+  | { type: "deleteRange"; start: number; end: number }
+  | { type: "undo" }
   | { type: "cursorTo"; offset: number }
   | { type: "selectRange"; start: number; end: number };
 
@@ -301,8 +303,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       actions.push({ type: "yank", text });
       resetPending(state);
     } else {
-      actions.push({ type: "selectRange", start: offset, end: target });
-      actions.push({ type: "cmd", cmd: "input.backspace" });
+      actions.push({ type: "deleteRange", start: offset, end: target });
       if (state.pendingOp === "c") enterInsert(state, actions);
       else resetPending(state);
     }
@@ -332,6 +333,15 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     if (key === "k") {
       pushN(actions, "input.move.up", n);
       pushN(actions, "input.delete.line", n + 1);
+      if (state.pendingOp === "c") enterInsert(state, actions);
+      else resetPending(state);
+      return { consume: true, actions };
+    }
+    if (key === "G") {
+      consumeCount(state);
+      const offset = prompt.getCursorOffset();
+      const text = prompt.getPlainText();
+      actions.push({ type: "deleteRange", start: offset, end: Math.max(0, text.length - 1) });
       if (state.pendingOp === "c") enterInsert(state, actions);
       else resetPending(state);
       return { consume: true, actions };
@@ -386,7 +396,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   }
 
   if (key === "u") {
-    actions.push({ type: "cmd", cmd: "input.undo" });
+    actions.push({ type: "undo" });
     resetPending(state);
     return { consume: true, actions };
   }

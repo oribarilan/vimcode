@@ -10,6 +10,11 @@ const plugin: TuiPluginModule = {
     const startMode = options?.startMode === "normal" ? "normal" : "insert";
     state.mode = startMode;
 
+    // Snapshot for single-step undo of deleteRange operations.
+    // The host editor's undo system splits multi-line deletions into
+    // multiple entries, so we save/restore the buffer ourselves.
+    let undoSnapshot: { text: string; cursor: number } | null = null;
+
     const prompt = {
       getLine: (n: number) => getInputText().split("\n")[n] ?? "",
       getLineCount: () => getInputText().split("\n").length,
@@ -26,6 +31,11 @@ const plugin: TuiPluginModule = {
 
     function applyActions(actions: Action[]) {
       for (const action of actions) {
+        // Any buffer-modifying action (other than our own deleteRange/undo)
+        // invalidates the undo snapshot.
+        if (action.type === "cmd" || action.type === "insertText") {
+          undoSnapshot = null;
+        }
         switch (action.type) {
           case "cmd":
             setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0);
@@ -61,6 +71,32 @@ const plugin: TuiPluginModule = {
           case "clearSelection":
             api.renderer?.currentFocusedEditor?.editorView?.resetSelection?.();
             break;
+          case "deleteRange": {
+            const editor = api.renderer?.currentFocusedEditor;
+            const eb = editor?.editBuffer;
+            if (eb?.deleteRange) {
+              undoSnapshot = { text: editor.plainText ?? "", cursor: editor.cursorOffset ?? 0 };
+              const text = editor.plainText ?? "";
+              const [sl, sc] = offsetToLineCol(text, action.start);
+              const [el, ec] = offsetToLineCol(text, action.end + 1);
+              eb.deleteRange(sl, sc, el, ec);
+            }
+            break;
+          }
+          case "undo": {
+            if (undoSnapshot) {
+              const editor = api.renderer?.currentFocusedEditor;
+              const eb = editor?.editBuffer;
+              if (eb?.setText && editor) {
+                eb.setText(undoSnapshot.text);
+                editor.cursorOffset = undoSnapshot.cursor;
+              }
+              undoSnapshot = null;
+            } else {
+              setTimeout(() => api.keymap.dispatchCommand("input.undo"), 0);
+            }
+            break;
+          }
           case "cursorTo": {
             const editor = api.renderer?.currentFocusedEditor;
             if (editor) editor.cursorOffset = action.offset;
@@ -144,5 +180,11 @@ const plugin: TuiPluginModule = {
     );
   },
 };
+
+function offsetToLineCol(text: string, offset: number): [number, number] {
+  const before = text.substring(0, offset);
+  const lines = before.split("\n");
+  return [lines.length - 1, lines[lines.length - 1].length];
+}
 
 export default plugin;
