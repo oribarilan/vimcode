@@ -8,9 +8,9 @@ install:
 test:
     bun test
 
-# Check formatting and lint
+# Check formatting and lint (warnings are errors)
 lint:
-    bunx biome ci .
+    bunx biome ci --error-on-warnings .
 
 # Auto-fix formatting and lint
 lint-fix:

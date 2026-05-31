@@ -6,7 +6,7 @@ Ordered by priority within each category.
 
 1. ~~**Replace `lineTracker` with direct cursor reads.**~~ Done.
 
-2. **Fix `gg` requiring two keypresses.** Single `g` fires `input.buffer.home` immediately. Real vim waits for a second `g`. Add pending-key state for `g` with a timeout or second-key check, similar to how `r` already works with `pendingChar`.
+2. ~~**Fix `gg` requiring two keypresses.**~~ Done.
 
 3. ~~**Fix `e` behaving identically to `w`.**~~ Done.
 

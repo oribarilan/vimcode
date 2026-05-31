@@ -54,11 +54,11 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 ```
 src/
   index.ts       (148 lines)  Plugin entry: intercept registration, action application
-  vim.ts         (517 lines)  Pure vim engine: state, handlers, command tables, types
+  vim.ts         (539 lines)  Pure vim engine: state, handlers, command tables, types
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  vim.test.ts    (791 lines)  Characterization tests for all key handling branches
+  vim.test.ts    (847 lines)  Characterization tests for all key handling branches
 ```
 
 **Data flow:**
@@ -111,7 +111,6 @@ To add a new motion that works with operators:
 
 ### Known limitations
 
-- **`g` fires immediately as `input.buffer.home`** — should wait for a second `g` (needs sequence state). Single `g` = go to top, which is wrong for vim.
 - **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec. Many of these can now be replaced with direct widget manipulation (e.g., setting `cursorOffset`, calling `insertText`).
 
 ## Development

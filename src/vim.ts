@@ -20,7 +20,7 @@ export type HandlerResult = {
 export type VimState = {
   mode: Mode;
   pendingOp: Operator;
-  pendingChar: "r" | null;
+  pendingChar: "r" | "g" | null;
   count: number;
   yankRegister: string;
 };
@@ -166,6 +166,19 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     pushN(actions, "input.delete", n);
     actions.push({ type: "insertText", text: key.repeat(n) });
     state.pendingChar = null;
+    return { consume: true, actions };
+  }
+
+  // Pending g prefix (gg, ge, etc.)
+  if (state.pendingChar === "g") {
+    state.pendingChar = null;
+    const actions: Action[] = [];
+    if (key === "g") {
+      consumeCount(state);
+      actions.push({ type: "cursorTo", offset: 0 });
+    } else {
+      resetPending(state);
+    }
     return { consume: true, actions };
   }
 
@@ -356,10 +369,9 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return { consume: true, actions };
   }
 
-  // gg (buffer home)
+  // g prefix — wait for second keypress
   if (key === "g") {
-    actions.push({ type: "cmd", cmd: "input.buffer.home" });
-    resetPending(state);
+    state.pendingChar = "g";
     return { consume: true, actions };
   }
 
@@ -429,6 +441,17 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent): Han
 
   const actions: Action[] = [];
 
+  // Pending g prefix in visual mode
+  if (state.pendingChar === "g") {
+    state.pendingChar = null;
+    if (key === "g") {
+      actions.push({ type: "cmd", cmd: "input.select.buffer.home" });
+      state.count = 0;
+      return { consume: true, actions };
+    }
+    // Unknown g-combo or escape — fall through to normal visual handling
+  }
+
   // Count accumulation
   if (/[1-9]/.test(key) || (key === "0" && state.count > 0)) {
     state.count = state.count * 10 + parseInt(key, 10);
@@ -466,10 +489,9 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent): Han
     return { consume: true, actions };
   }
 
-  // g = select to buffer home
+  // g prefix — wait for second keypress
   if (key === "g") {
-    actions.push({ type: "cmd", cmd: "input.select.buffer.home" });
-    state.count = 0;
+    state.pendingChar = "g";
     return { consume: true, actions };
   }
 

@@ -36,9 +36,9 @@ Types match commit prefixes: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`.
 ### Workflow
 
 1. Create a branch: `git checkout -b feat/your-feature`
-2. Make changes, run `just check` locally.
+2. Make changes, run `just check` locally. It must pass with zero errors and zero warnings.
 3. Push and open a PR against `main`.
-4. CI runs `just check` (lint + tests). It must pass before merge.
+4. CI runs `just check`. Warnings are treated as errors — the PR will be blocked until the check is fully clean.
 5. PRs are squash-merged. The PR title becomes the commit message on `main`.
 
 ## Commit messages

@@ -220,9 +220,47 @@ describe("handleNormalKey — motions", () => {
     expect(state.count).toBe(10);
   });
 
-  it("g dispatches input.buffer.home", () => {
+  it("g sets pendingChar, no actions", () => {
     const r = handleNormalKey(state, "g", ev("g"), mockPrompt);
-    expect(cmds(r.actions)).toEqual(["input.buffer.home"]);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toEqual([]);
+    expect(state.pendingChar).toBe("g");
+  });
+});
+
+// ── handleNormalKey — g prefix ─────────────────────────────
+
+describe("handleNormalKey — g prefix", () => {
+  it("gg moves cursor to buffer start", () => {
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    const r = handleNormalKey(state, "g", ev("g"), mockPrompt);
+    expect(r.consume).toBe(true);
+    expect(cursorTos(r.actions)).toEqual([0]);
+    expect(state.pendingChar).toBeNull();
+  });
+
+  it("g then Escape cancels pending, no movement", () => {
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    const r = handleNormalKey(state, "escape", ev("escape"), mockPrompt);
+    expect(state.pendingChar).toBeNull();
+    expect(r.actions).toEqual([]);
+  });
+
+  it("g then unknown key cancels pending, no movement", () => {
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    const r = handleNormalKey(state, "z", ev("z"), mockPrompt);
+    expect(r.consume).toBe(true);
+    expect(state.pendingChar).toBeNull();
+    expect(cursorTos(r.actions)).toEqual([]);
+    expect(cmds(r.actions)).toEqual([]);
+  });
+
+  it("5gg consumes count without crash", () => {
+    handleNormalKey(state, "5", ev("5"), mockPrompt);
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    const r = handleNormalKey(state, "g", ev("g"), mockPrompt);
+    expect(r.consume).toBe(true);
+    expect(state.count).toBe(0);
   });
 });
 
@@ -559,7 +597,7 @@ describe("handleNormalKey — yy uses cursor position", () => {
     };
     handleNormalKey(state, "2", ev("2"), prompt);
     handleNormalKey(state, "y", ev("y"), prompt);
-    const r = handleNormalKey(state, "y", ev("y"), prompt);
+    handleNormalKey(state, "y", ev("y"), prompt);
     expect(state.yankRegister).toBe("second\nthird\n");
   });
 
@@ -570,7 +608,7 @@ describe("handleNormalKey — yy uses cursor position", () => {
       getCursorLine: () => 2,
     };
     handleNormalKey(state, "y", ev("y"), prompt);
-    const r = handleNormalKey(state, "y", ev("y"), prompt);
+    handleNormalKey(state, "y", ev("y"), prompt);
     expect(state.yankRegister).toBe("third\n");
   });
 });
@@ -672,9 +710,27 @@ describe("handleVisualKey — motions", () => {
     expect(cmds(r.actions)).toEqual(["input.select.buffer.end"]);
   });
 
-  it("g dispatches input.select.buffer.home", () => {
+  it("g sets pendingChar, no actions", () => {
     const r = handleVisualKey(state, "g", ev("g"));
+    expect(r.consume).toBe(true);
+    expect(r.actions).toEqual([]);
+    expect(state.pendingChar).toBe("g");
+  });
+
+  it("gg selects to buffer home", () => {
+    handleVisualKey(state, "g", ev("g"));
+    const r = handleVisualKey(state, "g", ev("g"));
+    expect(r.consume).toBe(true);
     expect(cmds(r.actions)).toEqual(["input.select.buffer.home"]);
+    expect(state.pendingChar).toBeNull();
+  });
+
+  it("g then Escape in visual cancels pending, stays visual", () => {
+    handleVisualKey(state, "g", ev("g"));
+    handleVisualKey(state, "escape", ev("escape"));
+    expect(state.pendingChar).toBeNull();
+    // escape also exits visual mode
+    expect(state.mode).toBe("normal");
   });
 });
 

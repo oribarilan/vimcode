@@ -156,7 +156,6 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 - `V`, `Ctrl+v` - only character-wise visual mode (`v`) is supported, no line-wise or block
 - `ciw`, `di"`, etc. (text objects) - not yet implemented
-- `gg` - single `g` goes to buffer start immediately, doesn't wait for a second keypress
 - `dG`, `cG` - delete/change to buffer end not yet implemented (`yG` works)
 - No persistent mode indicator - the toast fades after about a second. Cursor shape is the persistent signal, but a status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
 
