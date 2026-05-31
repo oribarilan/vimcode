@@ -30,7 +30,7 @@ Ordered by priority within each category.
 
 2. **Visual-line mode (`V`).** The widget's `getLineInfo()` and `setSelection()` make line-wise selection straightforward. Extend the existing visual mode with a `visual-line` variant.
 
-3. **`dG`/`cG` — delete/change to buffer end.** `yG` already works. Delete and change variants need the same range calculation plus a content write.
+3. ~~**`dG`/`cG` — delete/change to buffer end.**~~ Done.
 
 4. **Proper `gg` as go-to-line.** Once `g` waits for a second keypress, `gg` goes to buffer start and `{n}G` goes to line n.
 

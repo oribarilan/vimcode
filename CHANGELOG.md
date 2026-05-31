@@ -8,13 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- `dG` and `cG` — delete/change from cursor to end of buffer. `yG` already worked, now all three operators work with `G`.
+
 ### Changed
 
-- Cursor shape uses the editor widget's `cursorStyle` property instead of writing DECSCUSR escape sequences to stdout. Works in terminals without DECSCUSR support (e.g. macOS Terminal.app).
+- Cursor shape is set via the editor widget's `cursorStyle` property instead of writing DECSCUSR escape sequences to stdout. Fixes terminals that don't support DECSCUSR (e.g. macOS Terminal.app).
 
 ### Fixed
 
-- `yy` reads the cursor position directly from the editor widget instead of a line counter. The old counter drifted on clicks, arrow keys, and word motions, so `yy` would yank the wrong line.
+- `dG`, `cG`, `de`, `ce` undo in a single `u` press. The host editor's undo system splits multi-line deletions into per-line entries, so these operations now go through `editBuffer.deleteRange()` with a pre-operation snapshot that `u` restores from directly.
+- `yy` reads the cursor position from the editor widget instead of a line counter. The counter drifted on clicks, arrow keys, and word motions, causing `yy` to yank the wrong line.
 - `e` moves to end of word instead of behaving like `w`. `de`, `ce`, and `ye` operate on the correct range too.
 - `g` waits for a second keypress instead of jumping to buffer start on its own. `gg` now works as a proper two-key command.
 

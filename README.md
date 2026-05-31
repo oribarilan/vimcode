@@ -106,7 +106,7 @@ When the input is empty, `j`/`k` scroll through prompt history instead of moving
 | `dl` `cl` `yl` | Character right |
 | `dj` `cj` `yj` | Current + line below |
 | `dk` `ck` `yk` | Current + line above |
-| `yG` | To end of buffer (yank only) |
+| `dG` `cG` `yG` | To end of buffer |
 
 Counts work on both operator and motion: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 
@@ -156,7 +156,6 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 - `V`, `Ctrl+v` - only character-wise visual mode (`v`) is supported, no line-wise or block
 - `ciw`, `di"`, etc. (text objects) - not yet implemented
-- `dG`, `cG` - delete/change to buffer end not yet implemented (`yG` works)
 - No persistent mode indicator - the toast fades after about a second. Cursor shape is the persistent signal, but a status bar indicator would need the host's SolidJS runtime, which external plugins can't access.
 
 Configurable key bindings are next once the core vim coverage stabilizes.

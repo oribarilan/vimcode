@@ -19,9 +19,9 @@ function cursorTos(actions: Action[]): number[] {
   return actions.filter((a): a is Extract<Action, { type: "cursorTo" }> => a.type === "cursorTo").map((a) => a.offset);
 }
 
-function selectRanges(actions: Action[]): Array<{ start: number; end: number }> {
+function deleteRanges(actions: Action[]): Array<{ start: number; end: number }> {
   return actions
-    .filter((a): a is Extract<Action, { type: "selectRange" }> => a.type === "selectRange")
+    .filter((a): a is Extract<Action, { type: "deleteRange" }> => a.type === "deleteRange")
     .map((a) => ({ start: a.start, end: a.end }));
 }
 
@@ -290,16 +290,14 @@ describe("handleNormalKey — e motion", () => {
   it("de deletes from cursor to end of word", () => {
     handleNormalKey(state, "d", ev("d"), ePrompt);
     const r = handleNormalKey(state, "e", ev("e"), ePrompt);
-    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
-    expect(cmds(r.actions)).toContain("input.backspace");
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
     expect(state.mode).toBe("normal");
   });
 
   it("ce deletes from cursor to end of word and enters insert", () => {
     handleNormalKey(state, "c", ev("c"), ePrompt);
     const r = handleNormalKey(state, "e", ev("e"), ePrompt);
-    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
-    expect(cmds(r.actions)).toContain("input.backspace");
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
     expect(state.mode).toBe("insert");
   });
 
@@ -407,6 +405,59 @@ describe("handleNormalKey — operators", () => {
   });
 });
 
+// ── handleNormalKey — dG and cG ─────────────────────────────
+
+describe("handleNormalKey — dG and cG", () => {
+  const midPrompt: PromptAccess = {
+    getLine: (n) => ["hello world", "second line", "third line"][n] ?? "",
+    getLineCount: () => 3,
+    getCursorLine: () => 1,
+    getCursorOffset: () => 12,
+    getPlainText: () => "hello world\nsecond line\nthird line",
+  };
+
+  it("dG deletes from cursor to buffer end", () => {
+    handleNormalKey(state, "d", ev("d"), midPrompt);
+    const r = handleNormalKey(state, "G", ev("g", { shift: true }), midPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 12, end: 33 }]);
+    expect(state.mode).toBe("normal");
+  });
+
+  it("cG deletes from cursor to buffer end, enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), midPrompt);
+    const r = handleNormalKey(state, "G", ev("g", { shift: true }), midPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 12, end: 33 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("yG still works (no regression)", () => {
+    handleNormalKey(state, "y", ev("y"), midPrompt);
+    const r = handleNormalKey(state, "G", ev("g", { shift: true }), midPrompt);
+    expect(cmds(r.actions)).toContain("input.select.buffer.end");
+    expect(r.actions.some((a) => a.type === "yankSelection")).toBe(true);
+  });
+
+  it("dG on empty buffer doesn't crash", () => {
+    handleNormalKey(state, "d", ev("d"), emptyPrompt);
+    const r = handleNormalKey(state, "G", ev("g", { shift: true }), emptyPrompt);
+    expect(r.consume).toBe(true);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 0 }]);
+  });
+
+  it("dG with cursor at end of buffer", () => {
+    const endPrompt: PromptAccess = {
+      getLine: (n) => ["hello"][n] ?? "",
+      getLineCount: () => 1,
+      getCursorLine: () => 0,
+      getCursorOffset: () => 4,
+      getPlainText: () => "hello",
+    };
+    handleNormalKey(state, "d", ev("d"), endPrompt);
+    const r = handleNormalKey(state, "G", ev("g", { shift: true }), endPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 4, end: 4 }]);
+  });
+});
+
 // ── handleNormalKey — shortcuts ─────────────────────────────
 
 describe("handleNormalKey — shortcuts", () => {
@@ -465,9 +516,9 @@ describe("handleNormalKey — special keys", () => {
     expect(cmds(r.actions)).toEqual(["input.line.end", "input.delete"]);
   });
 
-  it("u dispatches input.undo", () => {
+  it("u triggers undo", () => {
     const r = handleNormalKey(state, "u", ev("u"), mockPrompt);
-    expect(cmds(r.actions)).toEqual(["input.undo"]);
+    expect(r.actions.some((a) => a.type === "undo")).toBe(true);
   });
 
   it("ctrl+r dispatches input.redo", () => {
@@ -843,5 +894,120 @@ describe("plugin init", () => {
     // Should not throw with a sparse mock API.
     // biome-ignore lint/suspicious/noExplicitAny: mock API doesn't match full plugin types
     await plugin.tui(api as any, undefined, undefined as any);
+  });
+});
+
+// ── undo snapshot integration ─────────────────────────────
+
+describe("undo snapshot — deleteRange + u", () => {
+  // Exercises the full pipeline: key event → handler → applyActions → editor state.
+  // The contract: u after dG restores the full buffer in one step via
+  // editBuffer.setText, not the host's per-line input.undo.
+
+  function createMockEditor(text: string, cursor: number) {
+    let editorText = text;
+    let editorCursor = cursor;
+    const calls: { method: string; args: unknown[] }[] = [];
+    const editor = {
+      get plainText() {
+        return editorText;
+      },
+      get cursorOffset() {
+        return editorCursor;
+      },
+      set cursorOffset(v: number) {
+        editorCursor = v;
+      },
+      visualCursor: { logicalRow: 1 },
+      cursorStyle: { style: "block" as const, blinking: true },
+      insertText: () => {},
+      setSelectionInclusive: () => {},
+      editorView: { resetSelection: () => {} },
+      editBuffer: {
+        deleteRange: (sl: number, sc: number, el: number, ec: number) => {
+          calls.push({ method: "deleteRange", args: [sl, sc, el, ec] });
+          editorText = editorText.substring(0, cursor);
+        },
+        setText: (t: string) => {
+          calls.push({ method: "setText", args: [t] });
+          editorText = t;
+        },
+      },
+    };
+    return { editor, calls, getText: () => editorText, getCursor: () => editorCursor };
+  }
+
+  async function setup(text: string, cursor: number) {
+    const plugin = (await import("../src/index")).default;
+    const { editor, calls, getText, getCursor } = createMockEditor(text, cursor);
+    const dispatched: string[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: test mock
+    let handler: (ctx: any) => void;
+
+    const api = {
+      renderer: { currentFocusedEditor: editor, currentFocusedRenderable: editor },
+      ui: { toast: () => {}, dialog: { open: false } },
+      keymap: {
+        intercept: (_e: string, h: typeof handler) => {
+          handler = h;
+        },
+        dispatchCommand: (cmd: string) => {
+          dispatched.push(cmd);
+          return { ok: false };
+        },
+      },
+      route: { current: { name: "home", params: {} } },
+      state: { session: { question: () => [], permission: () => [] } },
+      lifecycle: { onDispose: () => {} },
+      kv: {},
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock API
+    await plugin.tui(api as any, undefined, undefined as any);
+
+    const press = (name: string, opts: Record<string, boolean> = {}) => {
+      handler?.({ event: { name, eventType: "press", ...opts }, consume: () => {} });
+    };
+
+    // Enter normal mode
+    press("escape");
+
+    return { press, calls, dispatched, getText, getCursor };
+  }
+
+  it("u after dG restores the full buffer via editBuffer.setText", async () => {
+    const original = "hello world\nsecond line\nthird line";
+    const { press, calls, dispatched, getCursor } = await setup(original, 12);
+
+    press("d");
+    press("g", { shift: true });
+    expect(calls.some((c) => c.method === "deleteRange")).toBe(true);
+
+    calls.length = 0;
+    press("u");
+
+    expect(calls).toContainEqual({ method: "setText", args: [original] });
+    expect(getCursor()).toBe(12);
+    expect(dispatched).not.toContain("input.undo");
+  });
+
+  it("u after dG then a motion falls back to host input.undo", async () => {
+    const { press, calls, dispatched } = await setup("hello world\nsecond line\nthird line", 12);
+
+    press("d");
+    press("g", { shift: true });
+    expect(calls.some((c) => c.method === "deleteRange")).toBe(true);
+
+    // h dispatches input.move.left (a cmd action), invalidating the snapshot
+    press("h");
+
+    calls.length = 0;
+    dispatched.length = 0;
+    press("u");
+
+    expect(calls.every((c) => c.method !== "setText")).toBe(true);
+    // input.undo is dispatched via setTimeout
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dispatched).toContain("input.undo");
   });
 });

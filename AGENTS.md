@@ -53,12 +53,12 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (148 lines)  Plugin entry: intercept registration, action application
-  vim.ts         (539 lines)  Pure vim engine: state, handlers, command tables, types
+  index.ts       (190 lines)  Plugin entry: intercept registration, action application
+  vim.ts         (549 lines)  Pure vim engine: state, handlers, command tables, types
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  vim.test.ts    (847 lines)  Characterization tests for all key handling branches
+  vim.test.ts    (904 lines)  Characterization tests for all key handling branches
 ```
 
 **Data flow:**
@@ -81,6 +81,8 @@ Handlers in `vim.ts` are pure — they take state + key + event, mutate state, r
 - `{ type: "clearSelection" }` — clears the textarea's selection via `editorView.resetSelection()`
 - `{ type: "cursorTo", offset: number }` — sets `editor.cursorOffset` directly
 - `{ type: "selectRange", start: number, end: number }` — calls `editor.setSelectionInclusive(start, end)`
+- `{ type: "deleteRange", start: number, end: number }` — deletes text between inclusive offsets via `editBuffer.deleteRange()`. Saves a snapshot for single-step undo (see below).
+- `{ type: "undo" }` — if an undo snapshot exists (from a `deleteRange`), restores the full buffer from it. Otherwise falls back to `dispatchCommand("input.undo")`.
 
 ### Adding a keybinding
 
@@ -112,6 +114,7 @@ To add a new motion that works with operators:
 ### Known limitations
 
 - **`setTimeout` dispatch** — commands are deferred to avoid re-entrancy. Multi-command sequences (like `O` = home + newline + up) rely on ordered setTimeout execution, which works in practice but isn't guaranteed by spec. Many of these can now be replaced with direct widget manipulation (e.g., setting `cursorOffset`, calling `insertText`).
+- **editBuffer undo granularity** — the host editor's undo system splits multi-line deletions into per-line entries. Operations that use `deleteRange` (like `dG`, `de`) work around this by saving a pre-operation snapshot and restoring from it on `u`. The snapshot is invalidated when any other buffer-modifying action runs (`cmd` or `insertText`).
 
 ## Development
 
