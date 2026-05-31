@@ -30,7 +30,9 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 }
 ```
 
-To upgrade, change the version tag and restart OpenCode. You'll see a toast when a newer version is available.
+> **Why a versioned ref?** OpenCode resolves `@latest` once and caches it forever. Bumping the version in your config is the only reliable way to get updates.
+
+You'll see a toast when a newer version is available (can be turned off).
 
 ## Configuration
 
