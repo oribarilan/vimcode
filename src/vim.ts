@@ -25,6 +25,7 @@ export type VimState = {
   pendingChar: "r" | "g" | null;
   count: number;
   yankRegister: string;
+  oneShotNormal: boolean;
 };
 
 export type KeyEvent = {
@@ -85,7 +86,7 @@ const PASS: HandlerResult = { consume: false, actions: [] };
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
 
 export function createVimState(): VimState {
-  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "" };
+  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "", oneShotNormal: false };
 }
 
 export function endOfWord(text: string, offset: number, count = 1): number {
@@ -143,6 +144,11 @@ export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent): Ha
   if (ev.name === "tab") {
     return { consume: true, actions: [{ type: "insertText", text: "\t" }] };
   }
+  if (ev.name === "o" && ev.ctrl) {
+    state.mode = "normal";
+    state.oneShotNormal = true;
+    return { consume: true, actions: [{ type: "toast", message: "(insert)", duration: 800 }] };
+  }
   return PASS;
 }
 
@@ -157,6 +163,12 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   }
 
   if (ev.name === "escape") {
+    if (state.oneShotNormal) {
+      state.oneShotNormal = false;
+      state.mode = "insert";
+      resetPending(state);
+      return { consume: true, actions: [{ type: "mode", mode: "insert" }] };
+    }
     resetPending(state);
     return PASS;
   }
@@ -404,6 +416,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   // Visual mode entry
   if (key === "v") {
     state.mode = "visual";
+    state.oneShotNormal = false;
     resetPending(state);
     return { consume: true, actions: [{ type: "mode", mode: "visual" }] };
   }
@@ -511,6 +524,20 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent): Han
 
 // ── Helpers ──────────────────────────────────────────────────
 
+export function finishOneShotIfComplete(state: VimState, result: HandlerResult): void {
+  if (!state.oneShotNormal) return;
+  if (!result.consume) return;
+  if (state.pendingOp !== null || state.pendingChar !== null || state.count > 0) return;
+  const alreadyEnteringInsert = result.actions.some((a) => a.type === "mode" && a.mode === "insert");
+  if (alreadyEnteringInsert) {
+    state.oneShotNormal = false;
+    return;
+  }
+  state.oneShotNormal = false;
+  state.mode = "insert";
+  result.actions.push({ type: "mode", mode: "insert" });
+}
+
 function resetPending(state: VimState) {
   state.pendingOp = null;
   state.pendingChar = null;
@@ -526,12 +553,14 @@ function consumeCount(state: VimState): number {
 function enterInsert(state: VimState, actions: Action[]) {
   resetPending(state);
   state.mode = "insert";
+  state.oneShotNormal = false;
   actions.push({ type: "mode", mode: "insert" });
 }
 
 function enterNormal(state: VimState, actions: Action[]) {
   state.mode = "normal";
   state.count = 0;
+  state.oneShotNormal = false;
   actions.push({ type: "mode", mode: "normal" });
 }
 

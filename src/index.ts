@@ -1,7 +1,15 @@
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { writeClipboard } from "./clipboard";
 import { checkForUpdate } from "./version";
-import { type Action, createVimState, handleInsertKey, handleNormalKey, handleVisualKey, translateKey } from "./vim";
+import {
+  type Action,
+  createVimState,
+  finishOneShotIfComplete,
+  handleInsertKey,
+  handleNormalKey,
+  handleVisualKey,
+  translateKey,
+} from "./vim";
 
 const plugin: TuiPluginModule = {
   id: "vimcode",
@@ -167,12 +175,14 @@ const plugin: TuiPluginModule = {
         }
 
         const key = translateKey(ctx.event);
+        const handlerMode = state.mode;
         const result =
           state.mode === "insert"
             ? handleInsertKey(state, key, ctx.event)
             : state.mode === "visual"
               ? handleVisualKey(state, key, ctx.event)
               : handleNormalKey(state, key, ctx.event, prompt);
+        if (handlerMode === "normal") finishOneShotIfComplete(state, result);
         if (result.consume) ctx.consume();
         applyActions(result.actions);
       },

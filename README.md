@@ -122,6 +122,8 @@ Counts work on both operator and motion: `2dd` deletes 2 lines, `d3w` deletes 3 
 | `o` | Open line below |
 | `O` | Open line above |
 
+`Ctrl+O` runs one normal-mode command and returns to insert. Motions, operators, counts, and `r{char}` all work.
+
 ### Visual mode
 
 Press `v` in normal mode to enter character-wise visual mode. Motions extend the selection, operators act on it:
@@ -139,6 +141,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 | Key | Action |
 |-----|--------|
+| `Ctrl+O` | One-shot normal mode (execute one command, return to insert) |
 | `r{char}` | Replace character under cursor with `{char}` |
 | `x` | Delete character |
 | `u` | Undo |

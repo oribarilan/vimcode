@@ -3,6 +3,7 @@ import {
   type Action,
   createVimState,
   endOfWord,
+  finishOneShotIfComplete,
   handleInsertKey,
   handleNormalKey,
   handleVisualKey,
@@ -172,6 +173,19 @@ describe("handleInsertKey", () => {
   it("regular key → passthrough", () => {
     const r = handleInsertKey(state, "a", ev("a"));
     expect(r.consume).toBe(false);
+  });
+
+  it("ctrl+o enters normal mode with oneShotNormal flag", () => {
+    const r = handleInsertKey(state, "o", ev("o", { ctrl: true }));
+    expect(r.consume).toBe(true);
+    expect(state.mode).toBe("normal");
+    expect(state.oneShotNormal).toBe(true);
+    expect(r.actions).toContainEqual({ type: "toast", message: "(insert)", duration: 800 });
+  });
+
+  it("ctrl+o does not emit a mode action", () => {
+    const r = handleInsertKey(state, "o", ev("o", { ctrl: true }));
+    expect(r.actions.some((a) => a.type === "mode")).toBe(false);
   });
 });
 
@@ -859,6 +873,177 @@ describe("handleVisualKey — exit and passthrough", () => {
     const r = handleVisualKey(state, "z", ev("z"));
     expect(r.consume).toBe(true);
     expect(r.actions).toEqual([]);
+  });
+});
+
+// ── Ctrl+O one-shot normal mode ───────────────────────────
+
+describe("Ctrl+O one-shot normal mode", () => {
+  function enterOneShot() {
+    state.mode = "insert";
+    handleInsertKey(state, "o", ev("o", { ctrl: true }));
+  }
+
+  it("w auto-returns to insert", () => {
+    enterOneShot();
+    const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+    expect(r.actions).toContainEqual({ type: "mode", mode: "insert" });
+  });
+
+  it("3w auto-returns to insert after count is consumed", () => {
+    enterOneShot();
+    handleNormalKey(state, "3", ev("3"), mockPrompt);
+    expect(state.oneShotNormal).toBe(true);
+    const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+  });
+
+  it("dw auto-returns to insert after operator+motion", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "d", ev("d"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    expect(state.mode).toBe("normal");
+    const r2 = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+  });
+
+  it("dd auto-returns to insert", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "d", ev("d"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    const r2 = handleNormalKey(state, "d", ev("d"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("r{char} auto-returns to insert", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "r", ev("r"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    expect(state.mode).toBe("normal");
+    const r2 = handleNormalKey(state, "a", ev("a"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("gg auto-returns to insert", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "g", ev("g"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    expect(state.mode).toBe("normal");
+    const r2 = handleNormalKey(state, "g", ev("g"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("cw enters insert directly without double mode switch", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "c", ev("c"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    const r2 = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+    const modeActions = r2.actions.filter((a) => a.type === "mode" && a.mode === "insert");
+    expect(modeActions).toHaveLength(1);
+  });
+
+  it("u auto-returns to insert", () => {
+    enterOneShot();
+    const r = handleNormalKey(state, "u", ev("u"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("p auto-returns to insert", () => {
+    enterOneShot();
+    const r = handleNormalKey(state, "p", ev("p"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("insert");
+  });
+
+  it(": auto-returns to insert", () => {
+    enterOneShot();
+    const r = handleNormalKey(state, ":", ev(":"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("e auto-returns to insert", () => {
+    enterOneShot();
+    const r = handleNormalKey(state, "e", ev("e"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("escape during one-shot returns to insert", () => {
+    enterOneShot();
+    const r = handleNormalKey(state, "escape", ev("escape"), mockPrompt);
+    expect(r.consume).toBe(true);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+    expect(r.actions).toContainEqual({ type: "mode", mode: "insert" });
+  });
+
+  it("v during one-shot cancels one-shot and enters visual", () => {
+    enterOneShot();
+    handleNormalKey(state, "v", ev("v"), mockPrompt);
+    expect(state.mode).toBe("visual");
+    expect(state.oneShotNormal).toBe(false);
+  });
+
+  it("sequential Ctrl+O usage works (flag resets cleanly)", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+    // Second round
+    enterOneShot();
+    expect(state.oneShotNormal).toBe(true);
+    const r2 = handleNormalKey(state, "b", ev("b"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+  });
+
+  it("cc enters insert directly without double mode switch", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "c", ev("c"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    const r2 = handleNormalKey(state, "c", ev("c"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+    const modeActions = r2.actions.filter((a) => a.type === "mode" && a.mode === "insert");
+    expect(modeActions).toHaveLength(1);
+  });
+
+  it("de auto-returns to insert (deleteRange path)", () => {
+    enterOneShot();
+    const r1 = handleNormalKey(state, "d", ev("d"), mockPrompt);
+    finishOneShotIfComplete(state, r1);
+    expect(state.mode).toBe("normal");
+    const r2 = handleNormalKey(state, "e", ev("e"), mockPrompt);
+    finishOneShotIfComplete(state, r2);
+    expect(state.mode).toBe("insert");
+    expect(state.oneShotNormal).toBe(false);
+    expect(r2.actions.some((a) => a.type === "deleteRange")).toBe(true);
+  });
+
+  it("does not auto-return when not in one-shot mode", () => {
+    state.mode = "normal";
+    state.oneShotNormal = false;
+    const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    finishOneShotIfComplete(state, r);
+    expect(state.mode).toBe("normal");
   });
 });
 

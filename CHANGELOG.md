@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- `Ctrl+O` in insert mode — run one normal-mode command, then return to insert. Motions, operators, counts, and `r{char}` all work.
+
 ## [0.10.0] — 2026-05-31
 
 ### Added
