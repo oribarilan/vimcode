@@ -49,7 +49,7 @@ To pass options, use the tuple form in `tui.json`:
 | `updateCheck` | `boolean` | `true` | On startup, check GitHub for new versions (at most once per day). This is the only network request vimcode makes. Set to `false` to disable. |
 | `modeToast` | `boolean` | `true` | Show a brief toast ("NORMAL" / "INSERT" / "VISUAL") on mode switches. Set to `false` to rely on cursor shape alone. |
 | `startMode` | `"insert"` \| `"normal"` | `"insert"` | Which mode to start in when OpenCode launches. |
-| `leader` | `string` | — | Match this to your `"leader"` keybind in `tui.json` (e.g. `"space"`). In insert mode, vimcode types the character normally instead of opening the leader menu. Modifier prefixes work: `"C-x"`, `"S-a"`, `"M-x"`. |
+| `leader` | `string` | — | Set this to match your `"leader"` keybind in `tui.json`. If you use space as leader (common in vim), this keeps spaces working while you type and lets leader sequences like `space l` fire in normal mode. Supports modifiers too: `"C-x"`, `"S-a"`, `"M-x"`. |
 
 ## What it does
 
