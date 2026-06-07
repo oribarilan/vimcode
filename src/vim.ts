@@ -162,7 +162,7 @@ export function parseLeaderKey(raw: string): ParsedLeader | null {
   return { name, ctrl, shift, meta, char };
 }
 
-function matchesLeader(ev: KeyEvent, leader: ParsedLeader): boolean {
+export function matchesLeader(ev: KeyEvent, leader: ParsedLeader): boolean {
   return (
     ev.name === leader.name &&
     (ev.ctrl ?? false) === leader.ctrl &&
