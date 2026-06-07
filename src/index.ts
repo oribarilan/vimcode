@@ -8,6 +8,7 @@ import {
   handleInsertKey,
   handleNormalKey,
   handleVisualKey,
+  parseLeaderKey,
   translateKey,
 } from "./vim";
 
@@ -17,6 +18,7 @@ const plugin: TuiPluginModule = {
     const state = createVimState();
     const startMode = options?.startMode === "normal" ? "normal" : "insert";
     state.mode = startMode;
+    const leader = options?.leader ? parseLeaderKey(options.leader) : null;
 
     // Snapshot for single-step undo of deleteRange operations.
     // The host editor's undo system splits multi-line deletions into
@@ -178,7 +180,7 @@ const plugin: TuiPluginModule = {
         const handlerMode = state.mode;
         const result =
           state.mode === "insert"
-            ? handleInsertKey(state, key, ctx.event)
+            ? handleInsertKey(state, key, ctx.event, leader)
             : state.mode === "visual"
               ? handleVisualKey(state, key, ctx.event)
               : handleNormalKey(state, key, ctx.event, prompt);

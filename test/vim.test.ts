@@ -8,6 +8,7 @@ import {
   handleNormalKey,
   handleVisualKey,
   type PromptAccess,
+  parseLeaderKey,
   translateKey,
   type VimState,
 } from "../src/vim";
@@ -138,6 +139,46 @@ describe("translateKey", () => {
   });
 });
 
+// ── parseLeaderKey ─────────────────────────────────────────
+
+describe("parseLeaderKey", () => {
+  it("parses 'space' with printable char", () => {
+    expect(parseLeaderKey("space")).toEqual({ name: "space", ctrl: false, shift: false, meta: false, char: " " });
+  });
+
+  it("parses single letter", () => {
+    expect(parseLeaderKey("a")).toEqual({ name: "a", ctrl: false, shift: false, meta: false, char: "a" });
+  });
+
+  it("parses 'C-x' (ctrl modifier)", () => {
+    expect(parseLeaderKey("C-x")).toEqual({ name: "x", ctrl: true, shift: false, meta: false, char: null });
+  });
+
+  it("parses 'S-a' (shift modifier, char uppercased)", () => {
+    expect(parseLeaderKey("S-a")).toEqual({ name: "a", ctrl: false, shift: true, meta: false, char: "A" });
+  });
+
+  it("parses 'M-x' (meta modifier)", () => {
+    expect(parseLeaderKey("M-x")).toEqual({ name: "x", ctrl: false, shift: false, meta: true, char: null });
+  });
+
+  it("parses compound modifiers 'C-S-a'", () => {
+    expect(parseLeaderKey("C-S-a")).toEqual({ name: "a", ctrl: true, shift: true, meta: false, char: null });
+  });
+
+  it("parses 'tab' with printable char", () => {
+    expect(parseLeaderKey("tab")).toEqual({ name: "tab", ctrl: false, shift: false, meta: false, char: "\t" });
+  });
+
+  it("returns null for empty string", () => {
+    expect(parseLeaderKey("")).toBeNull();
+  });
+
+  it("multi-char key name without modifiers has no printable char", () => {
+    expect(parseLeaderKey("escape")).toEqual({ name: "escape", ctrl: false, shift: false, meta: false, char: null });
+  });
+});
+
 // ── handleInsertKey ─────────────────────────────────────────
 
 describe("handleInsertKey", () => {
@@ -173,6 +214,64 @@ describe("handleInsertKey", () => {
   it("regular key → passthrough", () => {
     const r = handleInsertKey(state, "a", ev("a"));
     expect(r.consume).toBe(false);
+  });
+
+  it("leader key → consume and insert its character", () => {
+    const leader = parseLeaderKey("space");
+    const r = handleInsertKey(state, "space", ev("space"), leader);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toContainEqual({ type: "insertText", text: " " });
+  });
+
+  it("non-leader key still passes through with leader set", () => {
+    const leader = parseLeaderKey("space");
+    const r = handleInsertKey(state, "a", ev("a"), leader);
+    expect(r.consume).toBe(false);
+  });
+
+  it("non-printable leader consumed without insertText", () => {
+    const leader = parseLeaderKey("C-x");
+    const r = handleInsertKey(state, "x", ev("x", { ctrl: true }), leader);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toEqual([]);
+  });
+
+  it("explicit handlers take priority over leader (escape)", () => {
+    const leader = parseLeaderKey("escape");
+    const r = handleInsertKey(state, "escape", ev("escape"), leader);
+    expect(r.consume).toBe(true);
+    expect(state.mode).toBe("normal");
+  });
+
+  it("no leader parameter → backward compatible passthrough", () => {
+    const r = handleInsertKey(state, "space", ev("space"));
+    expect(r.consume).toBe(false);
+  });
+
+  it("null leader → backward compatible passthrough", () => {
+    const r = handleInsertKey(state, "space", ev("space"), null);
+    expect(r.consume).toBe(false);
+  });
+
+  it("tab handler wins over tab-as-leader", () => {
+    const leader = parseLeaderKey("tab");
+    const r = handleInsertKey(state, "tab", ev("tab"), leader);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toContainEqual({ type: "insertText", text: "\t" });
+  });
+
+  it("return handler wins over return-as-leader", () => {
+    const leader = parseLeaderKey("return");
+    const r = handleInsertKey(state, "return", ev("return"), leader);
+    expect(r.consume).toBe(true);
+    expect(cmds(r.actions)).toContain("input.newline");
+  });
+
+  it("shift leader matches shift key event", () => {
+    const leader = parseLeaderKey("S-a");
+    const r = handleInsertKey(state, "A", ev("a", { shift: true }), leader);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toContainEqual({ type: "insertText", text: "A" });
   });
 
   it("ctrl+o enters normal mode with oneShotNormal flag", () => {
