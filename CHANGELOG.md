@@ -11,7 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Added
 
 - `Ctrl+O` in insert mode — run one normal-mode command, then return to insert. Motions, operators, counts, and `r{char}` all work.
-- `leader` plugin option — if your OpenCode leader key doubles as a character you type (like space), this stops it from firing as leader while you're in insert mode ([#21](https://github.com/oribarilan/vimcode/issues/21)).
+- `leader` plugin option — lets you use space (or any key) as leader without breaking insert mode. Spaces type normally while editing, and leader sequences like `space l` still work in normal mode ([#21](https://github.com/oribarilan/vimcode/issues/21)).
 
 ## [0.10.0] — 2026-05-31
 
