@@ -9,6 +9,7 @@ import {
   handleNormalKey,
   handleVisualKey,
   matchesLeader,
+  type ParsedLeader,
   parseLeaderKey,
   translateKey,
 } from "./vim";
@@ -19,7 +20,7 @@ const plugin: TuiPluginModule = {
     const state = createVimState();
     const startMode = options?.startMode === "normal" ? "normal" : "insert";
     state.mode = startMode;
-    const leader = options?.leader ? parseLeaderKey(options.leader) : null;
+    const leader = resolveLeader();
 
     // Resolve modeIndicator: "toast" (default) or "none".
     // Backward compat: modeToast:false maps to "none", but only if
@@ -53,6 +54,21 @@ const plugin: TuiPluginModule = {
     // on the focused editor exposed by the renderer.
     function getInputText(): string {
       return api.renderer?.currentFocusedEditor?.plainText ?? "";
+    }
+
+    // Read the leader key from OpenCode's resolved keybinds config.
+    function resolveLeader(): ParsedLeader | null {
+      const binding = api.tuiConfig?.keybinds?.get?.("leader")?.[0];
+      const key = binding?.key;
+      if (typeof key === "string") return parseLeaderKey(key);
+      if (key && typeof key === "object" && typeof key.name === "string") {
+        let raw = key.name;
+        if (key.ctrl) raw = `C-${raw}`;
+        if (key.shift) raw = `S-${raw}`;
+        if (key.meta) raw = `M-${raw}`;
+        return parseLeaderKey(raw);
+      }
+      return null;
     }
 
     function applyActions(actions: Action[]) {
@@ -185,7 +201,18 @@ const plugin: TuiPluginModule = {
           if (sid) {
             const q = api.state.session.question(sid);
             const p = api.state.session.permission(sid);
-            if ((q && q.length > 0) || (p && p.length > 0)) return;
+            if ((q && q.length > 0) || (p && p.length > 0)) {
+              // Consume the leader key so dispatchLayers() doesn't
+              // match it as a leader token, which would enter pending-
+              // sequence state instead of typing a space.
+              if (leader && matchesLeader(ctx.event, leader)) {
+                ctx.consume();
+                if (leader.char) {
+                  api.renderer?.currentFocusedEditor?.insertText?.(leader.char);
+                }
+              }
+              return;
+            }
           }
         }
 

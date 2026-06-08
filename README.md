@@ -49,7 +49,6 @@ To pass options, use the tuple form in `tui.json`:
 | `updateCheck` | `boolean` | `true` | On startup, check GitHub for new versions (at most once per day). This is the only network request vimcode makes. Set to `false` to disable. |
 | `modeIndicator` | `"toast"` \| `"none"` | `"toast"` | How to show the current mode. `"toast"` flashes a brief notification on each switch. `"none"` disables it, relying on cursor shape alone. |
 | `startMode` | `"insert"` \| `"normal"` | `"insert"` | Which mode to start in when OpenCode launches. |
-| `leader` | `string` | — | Set this to match your `"leader"` keybind in `tui.json`. If you use space as leader (common in vim), this keeps spaces working while you type and lets leader sequences like `space l` fire in normal mode. Supports modifiers too: `"C-x"`, `"S-a"`, `"M-x"`. |
 
 ## What it does
 
