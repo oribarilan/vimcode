@@ -8,11 +8,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
-## [0.12.1] — 2026-06-08
+## [0.12.2] — 2026-06-08
 
-### Fixed
+### Reverted
 
-- Plugin failed to load when installed via git URL. Peer dependencies (`solid-js`, `@opentui/solid`, `@opentui/core`) were getting installed into the plugin's `node_modules/`, and their `.d.ts` stubs shadowed the host's runtime modules. Removed peer deps — the host provides these at runtime.
+- Persistent mode indicator removed. The SolidJS slot approach doesn't work from git-installed plugins — the host's JSX runtime can't be resolved from the package cache. Back to toast-only for now ([#3](https://github.com/oribarilan/vimcode/issues/3)).
+
+### Changed
+
+- `modeIndicator` option now accepts `"toast"` (default) or `"none"`. The `"status"` value from v0.12.0 is gone until the host resolves JSX for external plugins.
+- `Ctrl+O` one-shot normal now emits a proper `mode` action instead of a toast side-channel. The toast shows `(insert)` in lowercase, matching Vim convention.
 
 ## [0.12.0] — 2026-06-08
 
@@ -248,7 +253,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/oribarilan/vimcode/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/oribarilan/vimcode/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/oribarilan/vimcode/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/oribarilan/vimcode/compare/v0.10.0...v0.11.0

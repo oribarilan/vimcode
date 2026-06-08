@@ -1,7 +1,4 @@
-// @ts-nocheck
-/** @jsxImportSource @opentui/solid */
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
-import { createSignal } from "solid-js";
 import { writeClipboard } from "./clipboard";
 import { checkForUpdate } from "./version";
 import {
@@ -11,7 +8,6 @@ import {
   handleInsertKey,
   handleNormalKey,
   handleVisualKey,
-  type Mode,
   matchesLeader,
   parseLeaderKey,
   translateKey,
@@ -25,49 +21,15 @@ const plugin: TuiPluginModule = {
     state.mode = startMode;
     const leader = options?.leader ? parseLeaderKey(options.leader) : null;
 
-    // Resolve modeIndicator: "status" (default), "toast", or "none".
+    // Resolve modeIndicator: "toast" (default) or "none".
     // Backward compat: modeToast:false maps to "none", but only if
     // modeIndicator isn't explicitly set.
-    const modeIndicator: "status" | "toast" | "none" =
-      options?.modeIndicator === "status" || options?.modeIndicator === "toast" || options?.modeIndicator === "none"
+    const modeIndicator: "toast" | "none" =
+      options?.modeIndicator === "toast" || options?.modeIndicator === "none"
         ? options.modeIndicator
         : options?.modeToast === false
           ? "none"
-          : "status";
-
-    // Reactive signal for mode — drives the badge indicator.
-    const [mode, setMode] = createSignal<Mode>(startMode);
-
-    if (modeIndicator === "status") {
-      api.slots?.register?.({
-        slots: {
-          // biome-ignore lint/suspicious/noExplicitAny: slot context type comes from host
-          session_prompt_right(ctx: any) {
-            const m = mode();
-            const color =
-              m === "normal"
-                ? ctx.theme.current.warning
-                : m === "visual"
-                  ? ctx.theme.current.primary
-                  : ctx.theme.current.textMuted;
-            const label = m === "(insert)" ? m : m.toUpperCase();
-            return <text fg={color}>{label}</text>;
-          },
-          // biome-ignore lint/suspicious/noExplicitAny: slot context type comes from host
-          home_prompt_right(ctx: any) {
-            const m = mode();
-            const color =
-              m === "normal"
-                ? ctx.theme.current.warning
-                : m === "visual"
-                  ? ctx.theme.current.primary
-                  : ctx.theme.current.textMuted;
-            const label = m === "(insert)" ? m : m.toUpperCase();
-            return <text fg={color}>{label}</text>;
-          },
-        },
-      });
-    }
+          : "toast";
 
     // Track whether the previous key was the leader, so the follow-up
     // key also passes through to OpenCode's leader system.
@@ -105,9 +67,9 @@ const plugin: TuiPluginModule = {
             setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0);
             break;
           case "mode":
-            setMode(action.mode);
             if (modeIndicator === "toast") {
-              api.ui?.toast?.({ message: action.mode.toUpperCase(), variant: "info", duration: 800 });
+              const label = action.mode === "(insert)" ? action.mode : action.mode.toUpperCase();
+              api.ui?.toast?.({ message: label, variant: "info", duration: 800 });
             }
             break;
           case "toast":

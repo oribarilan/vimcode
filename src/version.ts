@@ -1,5 +1,5 @@
 // Keep in sync with package.json on each release.
-export const VERSION = "0.12.1";
+export const VERSION = "0.12.2";
 
 // GitHub API returns fresh content immediately; raw.githubusercontent.com
 // is CDN-cached for up to 5 minutes which delays update detection.

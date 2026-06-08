@@ -26,7 +26,7 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
 {
-  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.12.1"]
+  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.12.2"]
 }
 ```
 
@@ -40,20 +40,20 @@ To pass options, use the tuple form in `tui.json`:
 
 ```json
 {
-  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.12.1", { "updateCheck": false }]]
+  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.12.2", { "updateCheck": false }]]
 }
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `updateCheck` | `boolean` | `true` | On startup, check GitHub for new versions (at most once per day). This is the only network request vimcode makes. Set to `false` to disable. |
-| `modeIndicator` | `"status"` \| `"toast"` \| `"none"` | `"status"` | How to show the current mode. `"status"` shows a persistent label next to the prompt. `"toast"` flashes a brief notification on each switch (old behavior). `"none"` disables it, relying on cursor shape alone. |
+| `modeIndicator` | `"toast"` \| `"none"` | `"toast"` | How to show the current mode. `"toast"` flashes a brief notification on each switch. `"none"` disables it, relying on cursor shape alone. |
 | `startMode` | `"insert"` \| `"normal"` | `"insert"` | Which mode to start in when OpenCode launches. |
 | `leader` | `string` | — | Set this to match your `"leader"` keybind in `tui.json`. If you use space as leader (common in vim), this keeps spaces working while you type and lets leader sequences like `space l` fire in normal mode. Supports modifiers too: `"C-x"`, `"S-a"`, `"M-x"`. |
 
 ## What it does
 
-Adds normal/insert mode to OpenCode's prompt input. Escape enters normal mode, `i` goes back to insert. The current mode shows as a persistent label next to the prompt (configurable).
+Adds normal/insert mode to OpenCode's prompt input. Escape enters normal mode, `i` goes back to insert. A brief toast shows the current mode on each switch (configurable).
 
 In insert mode, typing works normally. Enter adds a newline, Ctrl+Enter submits. The file picker and autocomplete keep working: Enter picks the selected item, Escape closes the picker without leaving insert.
 
@@ -163,6 +163,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 - `V`, `Ctrl+v` - only character-wise visual mode (`v`) is supported, no line-wise or block
 - `ciw`, `di"`, etc. (text objects) - not yet implemented
+- No persistent mode indicator - the toast fades after about a second. A slot-based indicator needs the host's JSX runtime, which doesn't resolve reliably from git-installed plugins ([#3](https://github.com/oribarilan/vimcode/issues/3)).
 
 Configurable key bindings are next once the core vim coverage stabilizes.
 
