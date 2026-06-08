@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Added
 
+- `:q`, `:quit`, and `:wq` quit OpenCode from the command palette ([#19](https://github.com/oribarilan/vimcode/issues/19)). Since `:` already opens the palette, typing `:q` and pressing Enter exits the app.
 - `Ctrl+O` in insert mode — run one normal-mode command, then return to insert. Motions, operators, counts, and `r{char}` all work.
 - `leader` plugin option — lets you use space (or any key) as leader without breaking insert mode. Spaces type normally while editing, and leader sequences like `space l` still work in normal mode ([#21](https://github.com/oribarilan/vimcode/issues/21)).
 

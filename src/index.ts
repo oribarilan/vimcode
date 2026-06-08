@@ -147,6 +147,19 @@ const plugin: TuiPluginModule = {
       checkForUpdate((opts) => api.ui?.toast?.(opts), api.kv);
     }
 
+    // Register vim ex-commands in the command palette so that
+    // :q, :quit, and :wq work as expected.
+    const quit = {
+      category: "Vim",
+      description: "Exit OpenCode",
+      onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+    };
+    api.command?.register?.(() => [
+      { ...quit, title: "q", value: "vimcode.q" },
+      { ...quit, title: "quit", value: "vimcode.quit" },
+      { ...quit, title: "wq", value: "vimcode.wq" },
+    ]);
+
     api.keymap.intercept(
       "key",
       (ctx) => {

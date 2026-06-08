@@ -149,6 +149,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 | `Ctrl+r` | Redo |
 | `p` | Paste from yank register |
 | `:` | Command palette |
+| `:q` `:quit` `:wq` | Quit OpenCode (via command palette) |
 | `/` | Jump to message (session timeline) |
 | `[` `]` | Scroll conversation half-page up/down |
 | `{` `}` | Jump to previous/next message |
