@@ -1,6 +1,6 @@
 {
   "name": "vimcode",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Vim keybindings for the OpenCode prompt",
   "author": "Ori Bar-ilan",
   "license": "MIT",

@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-06-08
+
 ### Added
 
 - `:q`, `:quit`, and `:wq` quit OpenCode from the command palette ([#19](https://github.com/oribarilan/vimcode/issues/19)). Since `:` already opens the palette, typing `:q` and pressing Enter exits the app.
@@ -229,7 +231,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/oribarilan/vimcode/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/oribarilan/vimcode/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/oribarilan/vimcode/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/oribarilan/vimcode/compare/v0.7.0...v0.8.0

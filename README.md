@@ -26,7 +26,7 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
 {
-  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.10.0"]
+  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.11.0"]
 }
 ```
 
