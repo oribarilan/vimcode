@@ -19,6 +19,7 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 - `dispatchCommand()` from inside a `key:before` intercept doesn't work for cursor movement. Wrap in `setTimeout(..., 0)` to break out of the intercept stack.
 - `registerLayer` with `activeWhen` using SolidJS signals requires `reactiveMatcherFromSignal` from `@opentui/keymap/solid`. Plain `() => signal()` doesn't trigger re-evaluation. We chose intercepts instead of layers to avoid this.
 - **SolidJS imports work in distributed plugins** as of mid-2026. The plugin uses top-level `import { createSignal } from "solid-js"` and `@jsxImportSource @opentui/solid`. This requires `"type": "module"` in package.json and `solid-js`/`@opentui/solid`/`@opentui/core` as peer dependencies. Tests need a preload (`test/preload.ts`) to mock the JSX runtime since it's only available inside the OpenCode host.
+- **Do NOT add `solid-js`, `@opentui/solid`, or `@opentui/core` as dependencies or peerDependencies.** If they're in `package.json`, Bun installs them into the plugin's `node_modules/`, and the local `.d.ts` stubs shadow the host's runtime module intercepts. The host provides these at runtime via `ensureRuntimePluginSupport`. Keep them only in `devDependencies` (via `@opencode-ai/plugin` which pulls them in for type-checking).
 
 ### Editor widget API
 

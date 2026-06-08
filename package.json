@@ -1,6 +1,6 @@
 {
   "name": "vimcode",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Vim keybindings for the OpenCode prompt",
   "author": "Ori Bar-ilan",
   "license": "MIT",
@@ -31,11 +31,5 @@
     "@biomejs/biome": "2.4.15",
     "@opencode-ai/plugin": "^1.15.4",
     "tsx": "^4.22.1"
-  },
-  "peerDependencies": {
-    "@opencode-ai/plugin": "*",
-    "@opentui/core": "*",
-    "@opentui/solid": "*",
-    "solid-js": "*"
   }
 }
