@@ -26,6 +26,7 @@ export type VimState = {
   count: number;
   yankRegister: string;
   oneShotNormal: boolean;
+  disabled: boolean;
 };
 
 export type KeyEvent = {
@@ -94,7 +95,13 @@ const PASS: HandlerResult = { consume: false, actions: [] };
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
 
 export function createVimState(): VimState {
-  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "", oneShotNormal: false };
+  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "", oneShotNormal: false, disabled: false };
+}
+
+export function toggleVimMode(state: VimState): HandlerResult {
+  state.disabled = !state.disabled;
+  const message = state.disabled ? "Vim mode disabled" : "Vim mode enabled";
+  return { consume: true, actions: [{ type: "toast", message }] };
 }
 
 export function endOfWord(text: string, offset: number, count = 1): number {

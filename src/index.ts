@@ -10,6 +10,7 @@ import {
   handleVisualKey,
   matchesLeader,
   parseLeaderKey,
+  toggleVimMode,
   translateKey,
 } from "./vim";
 
@@ -21,15 +22,9 @@ const plugin: TuiPluginModule = {
     state.mode = startMode;
     const leader = options?.leader ? parseLeaderKey(options.leader) : null;
 
-    // Resolve modeIndicator: "toast" (default) or "none".
-    // Backward compat: modeToast:false maps to "none", but only if
-    // modeIndicator isn't explicitly set.
-    const modeIndicator: "toast" | "none" =
-      options?.modeIndicator === "toast" || options?.modeIndicator === "none"
-        ? options.modeIndicator
-        : options?.modeToast === false
-          ? "none"
-          : "toast";
+    // Load persisted disabled state
+    const persistedDisabled = (await api.kv?.get?.("vimcode.disabled")) as boolean | undefined;
+    state.disabled = persistedDisabled ?? false;
 
     // Track whether the previous key was the leader, so the follow-up
     // key also passes through to OpenCode's leader system.
@@ -67,13 +62,20 @@ const plugin: TuiPluginModule = {
             setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0);
             break;
           case "mode":
-            if (modeIndicator === "toast") {
-              const label = action.mode === "(insert)" ? action.mode : action.mode.toUpperCase();
-              api.ui?.toast?.({ message: label, variant: "info", duration: 800 });
+            if (options?.modeToast !== false) {
+              api.ui?.toast?.({
+                message: action.mode.toUpperCase(),
+                variant: "info",
+                duration: 800,
+              });
             }
             break;
           case "toast":
-            api.ui?.toast?.({ message: action.message, variant: "info", duration: action.duration ?? 2000 });
+            api.ui?.toast?.({
+              message: action.message,
+              variant: "info",
+              duration: action.duration ?? 2000,
+            });
             break;
           case "yank":
             writeClipboard(action.text);
@@ -89,7 +91,11 @@ const plugin: TuiPluginModule = {
               if (text) {
                 state.yankRegister = text;
                 writeClipboard(text);
-                api.ui?.toast?.({ message: "yanked", variant: "info", duration: 1000 });
+                api.ui?.toast?.({
+                  message: "yanked",
+                  variant: "info",
+                  duration: 1000,
+                });
               }
               editor?.editorView?.resetSelection?.();
             }, 0);
@@ -102,7 +108,10 @@ const plugin: TuiPluginModule = {
             const editor = api.renderer?.currentFocusedEditor;
             const eb = editor?.editBuffer;
             if (eb?.deleteRange) {
-              undoSnapshot = { text: editor.plainText ?? "", cursor: editor.cursorOffset ?? 0 };
+              undoSnapshot = {
+                text: editor.plainText ?? "",
+                cursor: editor.cursorOffset ?? 0,
+              };
               const text = editor.plainText ?? "";
               const [sl, sc] = offsetToLineCol(text, action.start);
               const [el, ec] = offsetToLineCol(text, action.end + 1);
@@ -141,7 +150,10 @@ const plugin: TuiPluginModule = {
     function syncCursorStyle() {
       const editor = api.renderer?.currentFocusedEditor;
       if (!editor) return;
-      editor.cursorStyle = { style: state.mode === "insert" ? "line" : "block", blinking: true };
+      editor.cursorStyle = {
+        style: state.mode === "insert" ? "line" : "block",
+        blinking: true,
+      };
     }
 
     // The Textarea resets cursorStyle during rendering, so re-apply on a
@@ -158,18 +170,46 @@ const plugin: TuiPluginModule = {
       checkForUpdate((opts) => api.ui?.toast?.(opts), api.kv);
     }
 
-    // Register vim ex-commands in the command palette so that
-    // :q, :quit, and :wq work as expected.
-    const quit = {
-      category: "Vim",
-      description: "Exit OpenCode",
-      onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
-    };
-    api.command?.register?.(() => [
-      { ...quit, title: "q", value: "vimcode.q" },
-      { ...quit, title: "quit", value: "vimcode.quit" },
-      { ...quit, title: "wq", value: "vimcode.wq" },
-    ]);
+    // Registers all of the commands offered by VimCode.
+    // Migrated from the deprecated `api.command?.register` API to support
+    // the new registerLayer standard.
+    api.keymap.registerLayer?.({
+      id: "vimcode.commands",
+      commands: [
+        {
+          id: "vimcode.q",
+          title: ":q",
+          category: "Vim",
+          description: "Exit OpenCode",
+          onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+        },
+        {
+          id: "vimcode.quit",
+          title: ":quit",
+          category: "Vim",
+          description: "Exit OpenCode",
+          onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+        },
+        {
+          id: "vimcode.wq",
+          title: ":wq",
+          category: "Vim",
+          description: "Exit OpenCode",
+          onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+        },
+        {
+          id: "vimcode.vim",
+          title: "/vim",
+          category: "Vim",
+          description: "Toggle vim mode on/off",
+          onSelect: async () => {
+            const result = toggleVimMode(state);
+            await api.kv.set("vimcode.disabled", state.disabled);
+            applyActions(result.actions);
+          },
+        },
+      ],
+    });
 
     api.keymap.intercept(
       "key",
@@ -208,6 +248,9 @@ const plugin: TuiPluginModule = {
             }
           }
         }
+
+        // If vim mode is disabled, pass all keys through unmodified.
+        if (state.disabled) return;
 
         const key = translateKey(ctx.event);
 
