@@ -67,7 +67,7 @@ Releases are manual.
 4. Update link references at the bottom of CHANGELOG.md.
 5. Bump version in `package.json` (`npm version X.Y.Z --no-git-tag-version`).
 6. Bump `VERSION` in `src/version.ts` to match.
-7. Update the version tag in `README.md`'s install snippet.
+7. Update **all** version tags in `README.md` — the install snippet and the config example both reference a specific version.
 8. Run `just check`.
 9. Open a PR with the release changes. Title: `Release vX.Y.Z: <one-line summary>`.
 10. After CI passes, squash-merge the PR.
@@ -86,4 +86,4 @@ Bare names (like `"vimcode"`) trigger npm resolution, which won't work since the
 
 ## Architecture
 
-`src/vim.ts` owns all key handling (pure functions). `src/index.ts` owns all OpenCode API interaction. See `AGENTS.md` for the full architecture guide.
+`src/vim.ts` owns all key handling (pure functions). `src/index.tsx` owns all OpenCode API interaction. See `AGENTS.md` for the full architecture guide.

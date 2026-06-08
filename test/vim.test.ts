@@ -279,12 +279,12 @@ describe("handleInsertKey", () => {
     expect(r.consume).toBe(true);
     expect(state.mode).toBe("normal");
     expect(state.oneShotNormal).toBe(true);
-    expect(r.actions).toContainEqual({ type: "toast", message: "(insert)", duration: 800 });
+    expect(r.actions).toContainEqual({ type: "mode", mode: "(insert)" });
   });
 
-  it("ctrl+o does not emit a mode action", () => {
+  it("ctrl+o emits (insert) mode action", () => {
     const r = handleInsertKey(state, "o", ev("o", { ctrl: true }));
-    expect(r.actions.some((a) => a.type === "mode")).toBe(false);
+    expect(r.actions.some((a) => a.type === "mode" && a.mode === "(insert)")).toBe(true);
   });
 });
 
