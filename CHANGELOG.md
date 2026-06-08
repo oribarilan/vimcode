@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-06-08
+
+### Added
+
+- Persistent mode indicator next to the prompt ([#3](https://github.com/oribarilan/vimcode/issues/3)). Shows NORMAL, INSERT, VISUAL, or (insert) for one-shot normal. Replaces the old toast, which disappeared after a second.
+- `modeIndicator` option: `"status"` (default, persistent label), `"toast"` (old behavior), or `"none"` (disabled). The old `modeToast` option still works as a fallback.
+
+### Changed
+
+- Plugin entry point is now `.tsx` (was `.ts`) to support SolidJS slot rendering.
+
 ## [0.11.0] — 2026-06-08
 
 ### Added
@@ -231,7 +242,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/oribarilan/vimcode/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/oribarilan/vimcode/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/oribarilan/vimcode/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/oribarilan/vimcode/compare/v0.8.0...v0.9.0

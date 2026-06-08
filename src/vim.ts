@@ -1,4 +1,4 @@
-export type Mode = "normal" | "insert" | "visual";
+export type Mode = "normal" | "insert" | "visual" | "(insert)";
 export type Operator = "d" | "c" | "y" | null;
 
 export type Action =
@@ -193,7 +193,7 @@ export function handleInsertKey(
   if (ev.name === "o" && ev.ctrl) {
     state.mode = "normal";
     state.oneShotNormal = true;
-    return { consume: true, actions: [{ type: "toast", message: "(insert)", duration: 800 }] };
+    return { consume: true, actions: [{ type: "mode", mode: "(insert)" }] };
   }
   // Swallow the leader key so OpenCode doesn't open the leader menu
   // while typing. Insert the literal character if it's printable.

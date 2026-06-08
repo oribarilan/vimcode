@@ -15,10 +15,10 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 
 **Gotchas we hit during development:**
 - TUI plugins go in `tui.json`, not `opencode.json`. The config field is `"plugin"`.
-- The plugin `package.json` needs `exports: { "./tui": "./src/index.ts" }` — the loader checks `./tui`, not `.`.
+- The plugin `package.json` needs `exports: { "./tui": "./src/index.tsx" }` — the loader checks `./tui`, not `.`.
 - `dispatchCommand()` from inside a `key:before` intercept doesn't work for cursor movement. Wrap in `setTimeout(..., 0)` to break out of the intercept stack.
 - `registerLayer` with `activeWhen` using SolidJS signals requires `reactiveMatcherFromSignal` from `@opentui/keymap/solid`. Plain `() => signal()` doesn't trigger re-evaluation. We chose intercepts instead of layers to avoid this.
-- **No external runtime imports in distributed plugins.** OpenCode's Bun runtime module plugin (`onResolve` hooks for `solid-js`, `@opentui/solid`, etc.) doesn't intercept imports from files loaded from `~/.cache/opencode/packages/`. Any import from `solid-js` or `@opentui/solid` fails with `Cannot find module`. Use only the `api` parameter and local modules. Mode feedback uses `api.ui.toast()` instead of a slot indicator. This limitation affects all git/npm-installed TUI plugins, not just vimcode.
+- **SolidJS imports work in distributed plugins** as of mid-2026. The plugin uses top-level `import { createSignal } from "solid-js"` and `@jsxImportSource @opentui/solid`. This requires `"type": "module"` in package.json and `solid-js`/`@opentui/solid`/`@opentui/core` as peer dependencies. Tests need a preload (`test/preload.ts`) to mock the JSX runtime since it's only available inside the OpenCode host.
 
 ### Editor widget API
 
@@ -53,7 +53,7 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (229 lines)  Plugin entry: intercept registration, action application
+  index.tsx      (291 lines)  Plugin entry: intercept registration, action application, slot UI
   vim.ts         (631 lines)  Pure vim engine: state, handlers, command tables, types
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
@@ -147,6 +147,8 @@ Branch naming: `type/description` — e.g. `feat/replace-char`, `fix/escape-hand
 **Test every handler branch.** When you add a keybinding, add a test. The test should verify what actions are returned and how state changes — not what those actions do when applied.
 
 **Prefer discriminated unions.** The `Action` type uses `{ type: "cmd" } | { type: "mode" } | ...` so consumers can exhaustively switch on `action.type`. Add new action types when handlers need new kinds of side effects.
+
+**Every mode transition emits a `mode` action.** The `Mode` type is the single source of truth for all displayable modes — including transient states like `"(insert)"` (one-shot normal). Never represent a mode as a separate boolean flag with a toast side-channel. If something changes what mode the user is in, it goes through the `Mode` type and a `{ type: "mode" }` action.
 
 **Keep `vim.ts` under 500 lines.** If it grows past that, split by concern (motions, operators, insert entries). The handlers are already structured with clear sections — those become natural file boundaries.
 
