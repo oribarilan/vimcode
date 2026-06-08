@@ -95,7 +95,15 @@ const PASS: HandlerResult = { consume: false, actions: [] };
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
 
 export function createVimState(): VimState {
-  return { mode: "insert", pendingOp: null, pendingChar: null, count: 0, yankRegister: "", oneShotNormal: false, disabled: false };
+  return {
+    mode: "insert",
+    pendingOp: null,
+    pendingChar: null,
+    count: 0,
+    yankRegister: "",
+    oneShotNormal: false,
+    disabled: false,
+  };
 }
 
 export function toggleVimMode(state: VimState): HandlerResult {
