@@ -190,35 +190,39 @@ const plugin: TuiPluginModule = {
     // Migrated from the deprecated `api.command?.register` API to support
     // the new registerLayer standard.
     api.keymap.registerLayer?.({
-      id: "vimcode.commands",
       commands: [
         {
-          id: "vimcode.q",
+          name: "vimcode.q",
           title: ":q",
           category: "Vim",
-          description: "Exit OpenCode",
-          onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+          namespace: "palette",
+          desc: "Exit OpenCode",
+          run: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
         },
         {
-          id: "vimcode.quit",
+          name: "vimcode.quit",
           title: ":quit",
           category: "Vim",
-          description: "Exit OpenCode",
-          onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+          namespace: "palette",
+          desc: "Exit OpenCode",
+          run: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
         },
         {
-          id: "vimcode.wq",
+          name: "vimcode.wq",
           title: ":wq",
           category: "Vim",
-          description: "Exit OpenCode",
-          onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+          namespace: "palette",
+          desc: "Exit OpenCode",
+          run: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
         },
         {
-          id: "vimcode.vim",
+          name: "vimcode.vim",
           title: "/vim",
           category: "Vim",
-          description: "Toggle vim mode on/off",
-          onSelect: async () => {
+          namespace: "palette",
+          desc: "Toggle vim mode on/off",
+          slashName: "vim",
+          run: async () => {
             const result = toggleVimMode(state);
             await api.kv.set("vimcode.disabled", state.disabled);
             applyActions(result.actions);
