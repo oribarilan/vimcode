@@ -6,7 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 > Add your changes to `[Unreleased]`. They get moved into a version heading at release time.
 
-## [Unreleased]
+## [0.13.0] — 2026-06-09
+
+### Changed
+
+- Leader key is now auto-detected from OpenCode's `keybinds.leader` config. The `leader` plugin option has been removed.
+
+### Fixed
+
+- Leader key (e.g. space) no longer enters pending-sequence state when typing in question or permission prompt overlays.
 
 ## [0.12.2] — 2026-06-08
 
