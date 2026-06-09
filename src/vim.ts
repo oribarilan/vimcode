@@ -108,8 +108,23 @@ export function createVimState(): VimState {
 
 export function toggleVimMode(state: VimState): HandlerResult {
   state.disabled = !state.disabled;
-  const message = state.disabled ? "Vim mode disabled" : "Vim mode enabled";
-  return { consume: true, actions: [{ type: "toast", message }] };
+  if (state.disabled) {
+    // Reset to clean insert mode so cursor style updates and no stale
+    // pending state carries over when re-enabled.
+    state.mode = "insert";
+    state.pendingOp = null;
+    state.pendingChar = null;
+    state.count = 0;
+    state.oneShotNormal = false;
+    return {
+      consume: true,
+      actions: [
+        { type: "toast", message: "Vim mode disabled" },
+        { type: "mode", mode: "insert" },
+      ],
+    };
+  }
+  return { consume: true, actions: [{ type: "toast", message: "Vim mode enabled" }] };
 }
 
 export function endOfWord(text: string, offset: number, count = 1): number {

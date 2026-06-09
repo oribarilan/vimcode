@@ -23,6 +23,16 @@ const plugin: TuiPluginModule = {
     state.mode = startMode;
     const leader = resolveLeader();
 
+    // Resolve modeIndicator: "toast" (default) or "none".
+    // Backward compat: modeToast:false maps to "none", but only if
+    // modeIndicator isn't explicitly set.
+    const modeIndicator: "toast" | "none" =
+      options?.modeIndicator === "toast" || options?.modeIndicator === "none"
+        ? options.modeIndicator
+        : options?.modeToast === false
+          ? "none"
+          : "toast";
+
     // Load persisted disabled state
     const persistedDisabled = (await api.kv?.get?.("vimcode.disabled")) as boolean | undefined;
     state.disabled = persistedDisabled ?? false;
@@ -78,9 +88,10 @@ const plugin: TuiPluginModule = {
             setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0);
             break;
           case "mode":
-            if (options?.modeToast !== false) {
+            if (modeIndicator === "toast") {
+              const label = action.mode === "(insert)" ? action.mode : action.mode.toUpperCase();
               api.ui?.toast?.({
-                message: action.mode.toUpperCase(),
+                message: label,
                 variant: "info",
                 duration: 800,
               });
@@ -186,35 +197,23 @@ const plugin: TuiPluginModule = {
       checkForUpdate((opts) => api.ui?.toast?.(opts), api.kv);
     }
 
-    // Registers all of the commands offered by VimCode.
-    // Migrated from the deprecated `api.command?.register` API to support
-    // the new registerLayer standard.
+    // Register vim ex-commands in the command palette so that
+    // :q, :quit, and :wq work as expected.
+    const quit = {
+      category: "Vim",
+      description: "Exit OpenCode",
+      onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
+    };
+    api.command?.register?.(() => [
+      { ...quit, title: "q", value: "vimcode.q" },
+      { ...quit, title: "quit", value: "vimcode.quit" },
+      { ...quit, title: "wq", value: "vimcode.wq" },
+    ]);
+
+    // Register the /vim toggle command via registerLayer so it appears
+    // as a slash command in the command palette.
     api.keymap.registerLayer?.({
       commands: [
-        {
-          name: "vimcode.q",
-          title: ":q",
-          category: "Vim",
-          namespace: "palette",
-          desc: "Exit OpenCode",
-          run: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
-        },
-        {
-          name: "vimcode.quit",
-          title: ":quit",
-          category: "Vim",
-          namespace: "palette",
-          desc: "Exit OpenCode",
-          run: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
-        },
-        {
-          name: "vimcode.wq",
-          title: ":wq",
-          category: "Vim",
-          namespace: "palette",
-          desc: "Exit OpenCode",
-          run: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
-        },
         {
           name: "vimcode.vim",
           title: "/vim",
@@ -224,7 +223,7 @@ const plugin: TuiPluginModule = {
           slashName: "vim",
           run: async () => {
             const result = toggleVimMode(state);
-            await api.kv.set("vimcode.disabled", state.disabled);
+            await api.kv?.set?.("vimcode.disabled", state.disabled);
             applyActions(result.actions);
           },
         },
@@ -235,6 +234,9 @@ const plugin: TuiPluginModule = {
       "key",
       (ctx) => {
         if (ctx.event.eventType === "release") return;
+
+        // If vim mode is disabled, pass all keys through unmodified.
+        if (state.disabled) return;
 
         // Pass through when any overlay owns the keyboard: dialogs (command
         // palette, session list, etc.), question prompts, or permission prompts.
@@ -279,9 +281,6 @@ const plugin: TuiPluginModule = {
             }
           }
         }
-
-        // If vim mode is disabled, pass all keys through unmodified.
-        if (state.disabled) return;
 
         const key = translateKey(ctx.event);
 
