@@ -16,7 +16,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 - Leader key (e.g. space) no longer enters pending-sequence state when typing in question or permission prompt overlays.
 
-## [0.12.2] — 2026-06-08
+### Unreleased
+
+- Command registration now uses the correct `registerLayer` command shape (`name`/`run`/`namespace`/`slashName` instead of `id`/`onSelect`). All 4 commands (`:q`, `:quit`, `:wq`, `/vim`) now appear in the command palette, and the `/vim` slash command properly toggles vim mode.
 
 ### Reverted
 
@@ -261,9 +263,6 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.12.2...HEAD
-[0.12.2]: https://github.com/oribarilan/vimcode/compare/v0.12.1...v0.12.2
-[0.12.1]: https://github.com/oribarilan/vimcode/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/oribarilan/vimcode/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/oribarilan/vimcode/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/oribarilan/vimcode/compare/v0.9.0...v0.10.0
