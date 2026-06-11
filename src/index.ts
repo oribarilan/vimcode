@@ -197,23 +197,44 @@ const plugin: TuiPluginModule = {
       checkForUpdate((opts) => api.ui?.toast?.(opts), api.kv);
     }
 
-    // Register vim ex-commands in the command palette so that
-    // :q, :quit, and :wq work as expected.
-    const quit = {
-      category: "Vim",
-      description: "Exit OpenCode",
-      onSelect: () => setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0),
-    };
-    api.command?.register?.(() => [
-      { ...quit, title: "q", value: "vimcode.q" },
-      { ...quit, title: "quit", value: "vimcode.quit" },
-      { ...quit, title: "wq", value: "vimcode.wq" },
-    ]);
-
-    // Register the /vim toggle command via registerLayer so it appears
-    // as a slash command in the command palette.
+    // Register all commands via registerLayer (migrated from the deprecated
+    // api.command?.register API). Commands appear in the command palette and
+    // are accessible as slash commands.
     api.keymap.registerLayer?.({
       commands: [
+        {
+          name: "vimcode.q",
+          title: ":q",
+          category: "Vim",
+          namespace: "palette",
+          desc: "Exit OpenCode",
+          slashName: "q",
+          run: async () => {
+            setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0);
+          },
+        },
+        {
+          name: "vimcode.quit",
+          title: ":quit",
+          category: "Vim",
+          namespace: "palette",
+          desc: "Exit OpenCode",
+          slashName: "quit",
+          run: async () => {
+            setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0);
+          },
+        },
+        {
+          name: "vimcode.wq",
+          title: ":wq",
+          category: "Vim",
+          namespace: "palette",
+          desc: "Exit OpenCode (write and quit)",
+          slashName: "wq",
+          run: async () => {
+            setTimeout(() => api.keymap.dispatchCommand("app.exit"), 0);
+          },
+        },
         {
           name: "vimcode.vim",
           title: "/vim",
