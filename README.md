@@ -66,6 +66,26 @@ When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picke
 
 First Escape in insert mode switches to normal - it won't trigger OpenCode's double-escape interrupt. So canceling a running response from insert mode takes 3 escapes: one for normal, two more for the interrupt.
 
+### Leader key
+
+vimcode reads OpenCode's leader key from your `tui.json` keybinds and handles it automatically, no plugin-side config needed.
+
+In **normal and visual mode**, the leader key and the follow-up key pass straight through to OpenCode, so leader shortcuts (`<leader>c` for copy, etc.) work as expected.
+
+In **insert mode**, vimcode intercepts the leader key to prevent the leader menu from popping up while you type. If the leader is a printable key like space, the character still gets inserted normally.
+
+This allows, for example, to use the popular vim-style `space` leader, set it in your `tui.json`:
+
+```json
+{
+  "keybinds": {
+    "leader": "space"
+  }
+}
+```
+
+Note that OpenCode defaults the leader to `ctrl+x`.
+
 ### Platform notes
 
 Clipboard (`y`, `yy`, `p`) uses the system clipboard: `pbcopy` on macOS, `clip.exe` on Windows, `xclip` on Linux. Linux users need `xclip` installed (`apt install xclip` or equivalent). If the clipboard tool is missing, yank/paste still works within the session via an internal register.
