@@ -36,6 +36,9 @@ const plugin: TuiPluginModule = {
     // Load persisted disabled state
     const persistedDisabled = (await api.kv?.get?.("vimcode.disabled")) as boolean | undefined;
     state.disabled = persistedDisabled ?? false;
+    if (state.disabled) {
+      api.ui?.toast?.({ message: "Vim mode disabled (use /vim to re-enable)", variant: "info", duration: 3000 });
+    }
 
     // Track whether the previous key was the leader, so the follow-up
     // key also passes through to OpenCode's leader system.
@@ -237,7 +240,7 @@ const plugin: TuiPluginModule = {
         },
         {
           name: "vimcode.vim",
-          title: "/vim",
+          title: ":vim",
           category: "Vim",
           namespace: "palette",
           desc: "Toggle vim mode on/off",

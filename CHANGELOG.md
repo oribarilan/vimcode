@@ -11,12 +11,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Added
 
 - `/vim` slash command to toggle vim mode on/off. State is persisted via `api.kv` so the preference survives restarts. When disabled, all keys pass through unmodified.
+- Startup toast when vim mode is disabled, so users know why keybindings aren't active and how to re-enable (`/vim`).
 
 ### Fixed
 
 - `api.kv.set` call in `/vim` toggle now uses optional chaining (`api.kv?.set?.()`) to avoid crashing on OpenCode versions without `api.kv`.
 - Disabled check moved before autocomplete handling so Escape/Enter are not intercepted when vim is disabled.
 - Toggling vim off now resets to insert mode and clears pending operator/char/count state, preventing stale state on re-enable and fixing cursor style.
+- `:vim` toggle command now uses `:` prefix in the palette, consistent with `:q`/`:quit`/`:wq`.
 
 ## [0.13.0] — 2026-06-09
 
