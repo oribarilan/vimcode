@@ -38,14 +38,6 @@ export type KeyEvent = {
   eventType?: string;
 };
 
-export type ParsedLeader = {
-  name: string;
-  ctrl: boolean;
-  shift: boolean;
-  meta: boolean;
-  char: string | null;
-};
-
 export type PromptAccess = {
   getLine: (n: number) => string;
   getLineCount: () => number;
@@ -168,45 +160,7 @@ export function translateKey(ev: KeyEvent): string {
   return key;
 }
 
-export function parseLeaderKey(raw: string): ParsedLeader | null {
-  if (!raw) return null;
-  let ctrl = false;
-  let shift = false;
-  let meta = false;
-  let remaining = raw;
-  while (remaining.length > 2 && remaining[1] === "-") {
-    const mod = remaining[0].toUpperCase();
-    if (mod === "C") ctrl = true;
-    else if (mod === "S") shift = true;
-    else if (mod === "M") meta = true;
-    else break;
-    remaining = remaining.slice(2);
-  }
-  const name = remaining.toLowerCase();
-  let char: string | null = null;
-  if (!ctrl && !meta) {
-    if (name === "space") char = " ";
-    else if (name === "tab") char = "\t";
-    else if (name.length === 1 && /[a-z0-9]/.test(name)) char = shift ? name.toUpperCase() : name;
-  }
-  return { name, ctrl, shift, meta, char };
-}
-
-export function matchesLeader(ev: KeyEvent, leader: ParsedLeader): boolean {
-  return (
-    ev.name === leader.name &&
-    (ev.ctrl ?? false) === leader.ctrl &&
-    (ev.shift ?? false) === leader.shift &&
-    (ev.meta ?? false) === leader.meta
-  );
-}
-
-export function handleInsertKey(
-  state: VimState,
-  _key: string,
-  ev: KeyEvent,
-  leader?: ParsedLeader | null,
-): HandlerResult {
+export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent): HandlerResult {
   if (ev.name === "escape") {
     state.mode = "normal";
     return { consume: true, actions: [{ type: "mode", mode: "normal" }] };
@@ -224,13 +178,6 @@ export function handleInsertKey(
     state.mode = "normal";
     state.oneShotNormal = true;
     return { consume: true, actions: [{ type: "mode", mode: "(insert)" }] };
-  }
-  // Swallow the leader key so OpenCode doesn't open the leader menu
-  // while typing. Insert the literal character if it's printable.
-  if (leader && matchesLeader(ev, leader)) {
-    return leader.char
-      ? { consume: true, actions: [{ type: "insertText", text: leader.char }] }
-      : { consume: true, actions: [] };
   }
   return PASS;
 }

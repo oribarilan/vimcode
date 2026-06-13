@@ -1,5 +1,6 @@
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { writeClipboard } from "./clipboard";
+import { findMatchingLeader, type KeyLike, leaderChar } from "./leader";
 import { checkForUpdate } from "./version";
 import {
   type Action,
@@ -8,9 +9,6 @@ import {
   handleInsertKey,
   handleNormalKey,
   handleVisualKey,
-  matchesLeader,
-  type ParsedLeader,
-  parseLeaderKey,
   toggleVimMode,
   translateKey,
 } from "./vim";
@@ -21,7 +19,7 @@ const plugin: TuiPluginModule = {
     const state = createVimState();
     const startMode = options?.startMode === "normal" ? "normal" : "insert";
     state.mode = startMode;
-    const leader = resolveLeader();
+    const leaderKeys = resolveLeaderKeys();
 
     // Resolve modeIndicator: "toast" (default) or "none".
     // Backward compat: modeToast:false maps to "none", but only if
@@ -64,19 +62,19 @@ const plugin: TuiPluginModule = {
       return api.renderer?.currentFocusedEditor?.plainText ?? "";
     }
 
-    // Read the leader key from OpenCode's resolved keybinds config.
-    function resolveLeader(): ParsedLeader | null {
-      const binding = api.tuiConfig?.keybinds?.get?.("leader")?.[0];
-      const key = binding?.key;
-      if (typeof key === "string") return parseLeaderKey(key);
-      if (key && typeof key === "object" && typeof key.name === "string") {
-        let raw = key.name;
-        if (key.ctrl) raw = `C-${raw}`;
-        if (key.shift) raw = `S-${raw}`;
-        if (key.meta) raw = `M-${raw}`;
-        return parseLeaderKey(raw);
-      }
-      return null;
+    // Read all configured leader keys from OpenCode's keybinds config.
+    function resolveLeaderKeys(): KeyLike[] {
+      const bindings = api.tuiConfig?.keybinds?.get?.("leader") ?? [];
+      return bindings
+        .map((b: { key?: unknown }) => b.key)
+        .filter(
+          (k: unknown): k is KeyLike =>
+            !!k &&
+            k !== "none" &&
+            k !== "false" &&
+            (typeof k === "string" ||
+              (typeof k === "object" && typeof (k as Record<string, unknown>).name === "string")),
+        );
     }
 
     function applyActions(actions: Action[]) {
@@ -255,11 +253,11 @@ const plugin: TuiPluginModule = {
               // Consume the leader key so dispatchLayers() doesn't
               // match it as a leader token, which would enter pending-
               // sequence state instead of typing a space.
-              if (leader && matchesLeader(ctx.event, leader)) {
+              const matched = findMatchingLeader(ctx.event, leaderKeys);
+              if (matched) {
                 ctx.consume();
-                if (leader.char) {
-                  api.renderer?.currentFocusedEditor?.insertText?.(leader.char);
-                }
+                const ch = leaderChar(matched);
+                if (ch) api.renderer?.currentFocusedEditor?.insertText?.(ch);
               }
               return;
             }
@@ -290,13 +288,13 @@ const plugin: TuiPluginModule = {
 
         // In normal/visual mode, let the leader key and its follow-up
         // pass through so OpenCode's leader bindings work.
-        if (leader && state.mode !== "insert") {
+        if (leaderKeys.length > 0 && state.mode !== "insert") {
           if (leaderPending) {
             leaderPending = false;
             if (leaderTimer) clearTimeout(leaderTimer);
             return;
           }
-          if (matchesLeader(ctx.event, leader)) {
+          if (findMatchingLeader(ctx.event, leaderKeys)) {
             leaderPending = true;
             leaderTimer = setTimeout(() => {
               leaderPending = false;
@@ -308,11 +306,25 @@ const plugin: TuiPluginModule = {
         const handlerMode = state.mode;
         const result =
           state.mode === "insert"
-            ? handleInsertKey(state, key, ctx.event, leader)
+            ? handleInsertKey(state, key, ctx.event)
             : state.mode === "visual"
               ? handleVisualKey(state, key, ctx.event)
               : handleNormalKey(state, key, ctx.event, prompt);
         if (handlerMode === "normal") finishOneShotIfComplete(state, result);
+
+        // In insert mode, if the handler didn't consume the key, check
+        // if it's a leader key. Swallow it to prevent the leader menu
+        // from popping up while typing. This runs after handleInsertKey
+        // so explicit handlers (escape, return, tab, ctrl+o) take priority.
+        if (handlerMode === "insert" && !result.consume && leaderKeys.length > 0) {
+          const matched = findMatchingLeader(ctx.event, leaderKeys);
+          if (matched) {
+            const ch = leaderChar(matched);
+            if (ch) result.actions.push({ type: "insertText", text: ch });
+            result.consume = true;
+          }
+        }
+
         if (result.consume) ctx.consume();
         applyActions(result.actions);
       },
