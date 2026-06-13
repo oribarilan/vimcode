@@ -147,13 +147,14 @@ Counts work on both operator and motion: `2dd` deletes 2 lines, `d3w` deletes 3 
 
 ### Visual mode
 
-Press `v` in normal mode to enter character-wise visual mode. Motions extend the selection, operators act on it:
+Press `v` in normal mode to enter character-wise visual mode. Press `V` to select the current line. Motions extend the selection, operators act on it:
 
 | Key | Action |
 |-----|--------|
 | `d` `x` | Delete selection |
 | `c` | Delete selection, enter insert mode |
 | `y` | Yank (copy) selection |
+| `V` | Select current line |
 | `Escape` `v` | Exit visual mode |
 
 All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `0` `$` `G`, with counts.
@@ -182,7 +183,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 ## Known gaps
 
-- `V`, `Ctrl+v` - only character-wise visual mode (`v`) is supported, no line-wise or block
+- `Ctrl+v` - block visual mode is not supported
 - `ciw`, `di"`, etc. (text objects) - not yet implemented
 - No persistent mode indicator - the toast fades after about a second. A slot-based indicator needs the host's JSX runtime, which doesn't resolve reliably from git-installed plugins ([#3](https://github.com/oribarilan/vimcode/issues/3)).
 

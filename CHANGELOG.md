@@ -14,6 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 - `/vim` toggle command to disable/enable vim mode. Persisted across restarts.
 - Startup toast when vim is disabled so users know why keybindings aren't active.
+- `V` selects the current line and enters visual mode.
 
 ### Fixed
 

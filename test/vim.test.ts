@@ -27,6 +27,12 @@ function deleteRanges(actions: Action[]): Array<{ start: number; end: number }> 
     .map((a) => ({ start: a.start, end: a.end }));
 }
 
+function selectRanges(actions: Action[]): Array<{ start: number; end: number }> {
+  return actions
+    .filter((a): a is Extract<Action, { type: "selectRange" }> => a.type === "selectRange")
+    .map((a) => ({ start: a.start, end: a.end }));
+}
+
 const ev = (name: string, opts?: { shift?: boolean; ctrl?: boolean; meta?: boolean; super?: boolean }) => ({
   name,
   shift: opts?.shift ?? false,
@@ -794,6 +800,43 @@ describe("handleNormalKey — visual mode entry", () => {
     handleNormalKey(state, "v", ev("v"), mockPrompt);
     expect(state.pendingOp).toBeNull();
     expect(state.mode).toBe("visual");
+  });
+
+  it("V selects the current line and enters visual mode", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 1,
+      getCursorOffset: () => 8,
+      getPlainText: () => "first\nsecond\nthird",
+    };
+
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), prompt);
+
+    expect(r.consume).toBe(true);
+    expect(state.mode).toBe("visual");
+    expect(selectRanges(r.actions)).toEqual([{ start: 6, end: 12 }]);
+    expect(r.actions).toContainEqual({ type: "mode", mode: "visual" });
+  });
+
+  it("V selects the first line including its newline", () => {
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), mockPrompt);
+
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 11 }]);
+  });
+
+  it("V selects the last line without requiring a trailing newline", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 2,
+      getCursorOffset: () => 15,
+      getPlainText: () => "first\nsecond\nthird",
+    };
+
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), prompt);
+
+    expect(selectRanges(r.actions)).toEqual([{ start: 13, end: 17 }]);
   });
 });
 

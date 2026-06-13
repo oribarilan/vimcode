@@ -444,6 +444,20 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   }
 
   // Visual mode entry
+  if (key === "V") {
+    const range = currentLineRange(prompt.getPlainText(), prompt.getCursorOffset());
+    state.mode = "visual";
+    state.oneShotNormal = false;
+    resetPending(state);
+    return {
+      consume: true,
+      actions: [
+        { type: "selectRange", start: range.start, end: range.end },
+        { type: "mode", mode: "visual" },
+      ],
+    };
+  }
+
   if (key === "v") {
     state.mode = "visual";
     state.oneShotNormal = false;
@@ -572,6 +586,14 @@ function resetPending(state: VimState) {
   state.pendingOp = null;
   state.pendingChar = null;
   state.count = 0;
+}
+
+function currentLineRange(text: string, offset: number): { start: number; end: number } {
+  if (text.length === 0) return { start: 0, end: 0 };
+  const safeOffset = Math.min(Math.max(offset, 0), text.length - 1);
+  const start = text.lastIndexOf("\n", safeOffset - 1) + 1;
+  const newline = text.indexOf("\n", safeOffset);
+  return { start, end: newline === -1 ? text.length - 1 : newline };
 }
 
 function consumeCount(state: VimState): number {
