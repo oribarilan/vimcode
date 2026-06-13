@@ -1,3 +1,6 @@
 {
-  "plugin": ["."]
+  "plugin": ["."],
+  "keybinds": {
+    "leader": "ctrl+x"
+  }
 }

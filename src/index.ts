@@ -316,17 +316,20 @@ const plugin: TuiPluginModule = {
         // if it's a leader key. Swallow it to prevent the leader menu
         // from popping up while typing. This runs after handleInsertKey
         // so explicit handlers (escape, return, tab, ctrl+o) take priority.
-        if (handlerMode === "insert" && !result.consume && leaderKeys.length > 0) {
+        // Don't mutate `result` — it may be the shared PASS constant.
+        let consume = result.consume;
+        let actions = result.actions;
+        if (handlerMode === "insert" && !consume && leaderKeys.length > 0) {
           const matched = findMatchingLeader(ctx.event, leaderKeys);
           if (matched) {
             const ch = leaderChar(matched);
-            if (ch) result.actions.push({ type: "insertText", text: ch });
-            result.consume = true;
+            actions = ch ? [{ type: "insertText" as const, text: ch }] : [];
+            consume = true;
           }
         }
 
-        if (result.consume) ctx.consume();
-        applyActions(result.actions);
+        if (consume) ctx.consume();
+        applyActions(actions);
       },
       { priority: 10_000 },
     );
