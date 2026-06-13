@@ -15,6 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Fixed
 
+- Counted delete/change commands such as `3dw` now undo in one `u` press instead of one undo per repeated host command.
 - Leader key now works with modifier-based configurations like the default `ctrl+x`. Previously, `parseLeaderKey` expected vim-style `C-x` notation but OpenCode's keybinds API returns `ctrl+x` format, so the leader key was silently broken for any config with modifiers.
 - Leader detection supports all OpenCode modifier aliases (`control`, `alt`, `option`, `super`) and multiple leader bindings.
 - Optional chaining on `api.kv.set` to avoid crashes on older OpenCode versions.

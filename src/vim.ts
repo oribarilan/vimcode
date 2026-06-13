@@ -10,6 +10,7 @@ export type Action =
   | { type: "yankSelection" }
   | { type: "clearSelection" }
   | { type: "deleteRange"; start: number; end: number }
+  | { type: "saveUndoSnapshot" }
   | { type: "undo" }
   | { type: "cursorTo"; offset: number }
   | { type: "selectRange"; start: number; end: number };
@@ -210,7 +211,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     pushN(actions, "input.delete", n);
     actions.push({ type: "insertText", text: key.repeat(n) });
     state.pendingChar = null;
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   // Pending g prefix (gg, ge, etc.)
@@ -282,12 +283,12 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     if (state.yankRegister) actions.push({ type: "yank", text: state.yankRegister });
     actions.push({ type: "cmd", cmd: "prompt.paste" });
     resetPending(state);
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   if (key === "X") {
     pushN(actions, "input.backspace", consumeCount(state));
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   if (key === "J") {
@@ -296,7 +297,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       actions.push({ type: "cmd", cmd: "input.line.end" });
       actions.push({ type: "cmd", cmd: "input.delete" });
     }
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   // Operators: d, c, y
@@ -311,11 +312,13 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
         state.yankRegister = text;
         actions.push({ type: "yank", text });
         actions.push({ type: "toast", message: `${n} line${n > 1 ? "s" : ""} yanked`, duration: 1000 });
+        resetPending(state);
       } else {
         pushN(actions, "input.delete.line", n);
         if (key === "c") enterInsert(state, actions);
+        else resetPending(state);
+        return finishUndoableChange(actions);
       }
-      state.pendingOp = null;
       return { consume: true, actions };
     }
     state.pendingOp = key;
@@ -325,13 +328,13 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   if (key === "D") {
     actions.push({ type: "cmd", cmd: "input.delete.to.line.end" });
     resetPending(state);
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   if (key === "C") {
     actions.push({ type: "cmd", cmd: "input.delete.to.line.end" });
     enterInsert(state, actions);
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   // Pending operator + e (end-of-word needs special handling)
@@ -344,12 +347,12 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       state.yankRegister = text;
       actions.push({ type: "yank", text });
       resetPending(state);
-    } else {
-      actions.push({ type: "deleteRange", start: offset, end: target });
-      if (state.pendingOp === "c") enterInsert(state, actions);
-      else resetPending(state);
+      return { consume: true, actions };
     }
-    return { consume: true, actions };
+    actions.push({ type: "deleteRange", start: offset, end: target });
+    if (state.pendingOp === "c") enterInsert(state, actions);
+    else resetPending(state);
+    return finishUndoableChange(actions);
   }
 
   // Pending operator + motion
@@ -370,14 +373,14 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       pushN(actions, "input.delete.line", n + 1);
       if (state.pendingOp === "c") enterInsert(state, actions);
       else resetPending(state);
-      return { consume: true, actions };
+      return finishUndoableChange(actions);
     }
     if (key === "k") {
       pushN(actions, "input.move.up", n);
       pushN(actions, "input.delete.line", n + 1);
       if (state.pendingOp === "c") enterInsert(state, actions);
       else resetPending(state);
-      return { consume: true, actions };
+      return finishUndoableChange(actions);
     }
     if (key === "G") {
       consumeCount(state);
@@ -386,7 +389,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       actions.push({ type: "deleteRange", start: offset, end: Math.max(0, text.length - 1) });
       if (state.pendingOp === "c") enterInsert(state, actions);
       else resetPending(state);
-      return { consume: true, actions };
+      return finishUndoableChange(actions);
     }
 
     const deleteCmd = DELETE_MOTION[key];
@@ -394,7 +397,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       pushN(actions, deleteCmd, n);
       if (state.pendingOp === "c") enterInsert(state, actions);
       else resetPending(state);
-      return { consume: true, actions };
+      return finishUndoableChange(actions);
     }
 
     resetPending(state);
@@ -429,7 +432,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
 
   if (key === "x") {
     pushN(actions, "input.delete", consumeCount(state));
-    return { consume: true, actions };
+    return finishUndoableChange(actions);
   }
 
   if (key === "r") {
@@ -572,6 +575,10 @@ function resetPending(state: VimState) {
   state.pendingOp = null;
   state.pendingChar = null;
   state.count = 0;
+}
+
+function finishUndoableChange(actions: Action[]): HandlerResult {
+  return { consume: true, actions: [{ type: "saveUndoSnapshot" }, ...actions] };
 }
 
 function consumeCount(state: VimState): number {
