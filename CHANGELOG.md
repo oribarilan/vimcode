@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Fixed
+
+- Clipboard now uses `wl-copy` on Wayland instead of `xclip`, which doesn't work there.
+
 ## [0.14.0] — 2026-06-13
 
 ### Added
