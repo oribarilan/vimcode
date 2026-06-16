@@ -306,7 +306,7 @@ const plugin: TuiPluginModule = {
         const handlerMode = state.mode;
         const result =
           state.mode === "insert"
-            ? handleInsertKey(state, key, ctx.event)
+            ? handleInsertKey(state, key, ctx.event, prompt)
             : state.mode === "visual"
               ? handleVisualKey(state, key, ctx.event)
               : handleNormalKey(state, key, ctx.event, prompt);
