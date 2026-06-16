@@ -288,7 +288,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/oribarilan/vimcode/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/oribarilan/vimcode/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/oribarilan/vimcode/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/oribarilan/vimcode/compare/v0.12.1...v0.12.2
