@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-06-16
+
 ### Fixed
 
 - Non-printable leader keys (e.g. `ctrl+x`) now work in insert mode instead of being swallowed ([#42](https://github.com/oribarilan/vimcode/issues/42)).
