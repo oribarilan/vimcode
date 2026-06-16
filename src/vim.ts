@@ -160,10 +160,18 @@ export function translateKey(ev: KeyEvent): string {
   return key;
 }
 
-export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent): HandlerResult {
+export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent, prompt: PromptAccess): HandlerResult {
   if (ev.name === "escape") {
     state.mode = "normal";
-    return { consume: true, actions: [{ type: "mode", mode: "normal" }] };
+    const actions: Action[] = [];
+    // Vim moves cursor one left when leaving insert mode,
+    // unless at position 0 or start of line.
+    const offset = prompt.getCursorOffset();
+    if (offset > 0 && prompt.getPlainText()[offset - 1] !== "\n") {
+      actions.push({ type: "cursorTo", offset: offset - 1 });
+    }
+    actions.push({ type: "mode", mode: "normal" });
+    return { consume: true, actions };
   }
   if (ev.name === "return" && ev.ctrl) {
     return { consume: true, actions: [{ type: "cmd", cmd: "input.submit" }] };
