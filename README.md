@@ -72,7 +72,7 @@ vimcode reads OpenCode's leader key from your `tui.json` keybinds and handles it
 
 In **normal and visual mode**, the leader key and the follow-up key pass straight through to OpenCode, so leader shortcuts (`<leader>c` for copy, etc.) work as expected.
 
-In **insert mode**, vimcode intercepts the leader key to prevent the leader menu from popping up while you type. If the leader is a printable key like space, the character still gets inserted normally.
+In **insert mode**, printable leaders (like space) insert their character. Non-printable leaders (like `ctrl+x`) pass through to OpenCode, so leader shortcuts work from any mode.
 
 This allows, for example, to use the popular vim-style `space` leader, set it in your `tui.json`:
 

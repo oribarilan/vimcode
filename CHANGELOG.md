@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Fixed
 
+- Non-printable leader keys (e.g. `ctrl+x`) now work in insert mode instead of being swallowed ([#42](https://github.com/oribarilan/vimcode/issues/42)).
 - Escape from insert mode now moves cursor left, matching vim.
 - Clipboard now uses `wl-copy` on Wayland instead of `xclip`, which doesn't work there.
 
