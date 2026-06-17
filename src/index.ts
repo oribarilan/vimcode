@@ -43,10 +43,10 @@ const plugin: TuiPluginModule = {
     let leaderPending = false;
     let leaderTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Snapshot for single-step undo of deleteRange operations.
-    // The host editor's undo system splits multi-line deletions into
-    // multiple entries, so we save/restore the buffer ourselves.
-    let undoSnapshot: { text: string; cursor: number } | null = null;
+    // Snapshots for single-step undo of vim changes.
+    // The host editor's undo system splits repeated commands into multiple
+    // entries, so we save/restore the buffer ourselves.
+    let undoSnapshots: Array<{ text: string; cursor: number }> = [];
 
     const prompt = {
       getLine: (n: number) => getInputText().split("\n")[n] ?? "",
@@ -78,11 +78,12 @@ const plugin: TuiPluginModule = {
     }
 
     function applyActions(actions: Action[]) {
+      let keepUndoSnapshotForBatch = false;
       for (const action of actions) {
         // Any buffer-modifying action (other than our own deleteRange/undo)
         // invalidates the undo snapshot.
-        if (action.type === "cmd" || action.type === "insertText") {
-          undoSnapshot = null;
+        if ((action.type === "cmd" || action.type === "insertText") && !keepUndoSnapshotForBatch) {
+          undoSnapshots = [];
         }
         switch (action.type) {
           case "cmd":
@@ -136,10 +137,6 @@ const plugin: TuiPluginModule = {
             const editor = api.renderer?.currentFocusedEditor;
             const eb = editor?.editBuffer;
             if (eb?.deleteRange) {
-              undoSnapshot = {
-                text: editor.plainText ?? "",
-                cursor: editor.cursorOffset ?? 0,
-              };
               const text = editor.plainText ?? "";
               const [sl, sc] = offsetToLineCol(text, action.start);
               const [el, ec] = offsetToLineCol(text, action.end + 1);
@@ -147,7 +144,19 @@ const plugin: TuiPluginModule = {
             }
             break;
           }
+          case "saveUndoSnapshot": {
+            const editor = api.renderer?.currentFocusedEditor;
+            if (editor) {
+              undoSnapshots.push({
+                text: editor.plainText ?? "",
+                cursor: editor.cursorOffset ?? 0,
+              });
+            }
+            keepUndoSnapshotForBatch = true;
+            break;
+          }
           case "undo": {
+            const undoSnapshot = undoSnapshots.pop();
             if (undoSnapshot) {
               const editor = api.renderer?.currentFocusedEditor;
               const eb = editor?.editBuffer;
@@ -155,7 +164,6 @@ const plugin: TuiPluginModule = {
                 eb.setText(undoSnapshot.text);
                 editor.cursorOffset = undoSnapshot.cursor;
               }
-              undoSnapshot = null;
             } else {
               setTimeout(() => api.keymap.dispatchCommand("input.undo"), 0);
             }

@@ -27,6 +27,10 @@ function deleteRanges(actions: Action[]): Array<{ start: number; end: number }> 
     .map((a) => ({ start: a.start, end: a.end }));
 }
 
+function saveUndoSnapshots(actions: Action[]): Action[] {
+  return actions.filter((a) => a.type === "saveUndoSnapshot");
+}
+
 function selectRanges(actions: Action[]): Array<{ start: number; end: number }> {
   return actions
     .filter((a): a is Extract<Action, { type: "selectRange" }> => a.type === "selectRange")
@@ -412,6 +416,9 @@ describe("handleNormalKey — e motion", () => {
     const r = handleNormalKey(state, "e", ev("e"), ePrompt);
     expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
     expect(state.mode).toBe("normal");
+    // The deleteRange goes through finishUndoableChange, so the snapshot
+    // comes from a single source (the saveUndoSnapshot action), not index.ts.
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
   });
 
   it("ce deletes from cursor to end of word and enters insert", () => {
@@ -450,6 +457,18 @@ describe("handleNormalKey — operators", () => {
     handleNormalKey(state, "d", ev("d"), mockPrompt);
     const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
     expect(cmds(r.actions)).toEqual(["input.delete.word.forward"]);
+  });
+
+  it("3dw saves one undo snapshot around the repeated deletes", () => {
+    handleNormalKey(state, "3", ev("3"), mockPrompt);
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
+    expect(cmds(r.actions)).toEqual([
+      "input.delete.word.forward",
+      "input.delete.word.forward",
+      "input.delete.word.forward",
+    ]);
   });
 
   it("d$ dispatches input.delete.to.line.end", () => {
@@ -541,6 +560,9 @@ describe("handleNormalKey — dG and cG", () => {
     const r = handleNormalKey(state, "G", ev("g", { shift: true }), midPrompt);
     expect(deleteRanges(r.actions)).toEqual([{ start: 12, end: 33 }]);
     expect(state.mode).toBe("normal");
+    // Single snapshot source: the saveUndoSnapshot action, not a second
+    // push inside the deleteRange handler.
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
   });
 
   it("cG deletes from cursor to buffer end, enters insert", () => {
@@ -1328,6 +1350,77 @@ describe("undo snapshot — deleteRange + u", () => {
 
     // h dispatches input.move.left (a cmd action), invalidating the snapshot
     press("h");
+
+    calls.length = 0;
+    dispatched.length = 0;
+    press("u");
+
+    expect(calls.every((c) => c.method !== "setText")).toBe(true);
+    // input.undo is dispatched via setTimeout
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dispatched).toContain("input.undo");
+  });
+
+  it("u after 3dw restores the full buffer via editBuffer.setText", async () => {
+    const original = "hello world second line third line";
+    const { press, calls, dispatched, getCursor } = await setup(original, 0);
+
+    press("3");
+    press("d");
+    press("w");
+
+    calls.length = 0;
+    press("u");
+
+    expect(calls).toContainEqual({ method: "setText", args: [original] });
+    expect(getCursor()).toBe(0);
+    expect(dispatched).not.toContain("input.undo");
+  });
+
+  it("u after 3dw then dd unwinds the snapshot stack one step per press", async () => {
+    const original = "hello world second line third line";
+    const { press, calls, dispatched } = await setup(original, 0);
+
+    // Two stacked undoable changes → two snapshots on the stack.
+    press("3");
+    press("d");
+    press("w");
+    press("d");
+    press("d");
+
+    // First u pops the dd snapshot, second pops the 3dw snapshot — each a
+    // local restore via setText, never the host's input.undo.
+    calls.length = 0;
+    dispatched.length = 0;
+    press("u");
+    expect(calls.some((c) => c.method === "setText")).toBe(true);
+    expect(dispatched).not.toContain("input.undo");
+
+    calls.length = 0;
+    press("u");
+    expect(calls.some((c) => c.method === "setText")).toBe(true);
+    expect(dispatched).not.toContain("input.undo");
+
+    // Stack is now empty — a third u falls through to host undo.
+    calls.length = 0;
+    press("u");
+    expect(calls.every((c) => c.method !== "setText")).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dispatched).toContain("input.undo");
+  });
+
+  it("u after 3dw then an insert-mode edit falls back to host input.undo", async () => {
+    const { press, calls, dispatched } = await setup("hello world second line third line", 0);
+
+    press("3");
+    press("d");
+    press("w");
+
+    // Enter insert and modify the buffer. The insert edit emits an
+    // insertText action, which clears the vim snapshot stack.
+    press("i");
+    press("tab");
+    press("escape");
 
     calls.length = 0;
     dispatched.length = 0;
