@@ -314,16 +314,18 @@ const plugin: TuiPluginModule = {
         const handlerMode = state.mode;
         const result =
           state.mode === "insert"
-            ? handleInsertKey(state, key, ctx.event)
+            ? handleInsertKey(state, key, ctx.event, prompt)
             : state.mode === "visual"
               ? handleVisualKey(state, key, ctx.event)
               : handleNormalKey(state, key, ctx.event, prompt);
         if (handlerMode === "normal") finishOneShotIfComplete(state, result);
 
-        // In insert mode, if the handler didn't consume the key, check
-        // if it's a leader key. Swallow it to prevent the leader menu
-        // from popping up while typing. This runs after handleInsertKey
-        // so explicit handlers (escape, return, tab, ctrl+o) take priority.
+        // In insert mode, intercept printable leaders (space, "a") so
+        // they insert their character instead of triggering the leader
+        // menu mid-typing. Non-printable leaders (ctrl+x, alt+m) fall
+        // through to dispatchLayers() so app-level shortcuts work
+        // without switching modes. Runs after handleInsertKey so
+        // explicit handlers (escape, return, tab, ctrl+o) take priority.
         // Don't mutate `result` — it may be the shared PASS constant.
         let consume = result.consume;
         let actions = result.actions;
@@ -331,8 +333,10 @@ const plugin: TuiPluginModule = {
           const matched = findMatchingLeader(ctx.event, leaderKeys);
           if (matched) {
             const ch = leaderChar(matched);
-            actions = ch ? [{ type: "insertText" as const, text: ch }] : [];
-            consume = true;
+            if (ch) {
+              actions = [{ type: "insertText" as const, text: ch }];
+              consume = true;
+            }
           }
         }
 

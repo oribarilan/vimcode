@@ -8,10 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-06-16
+
+### Fixed
+
+- Non-printable leader keys (e.g. `ctrl+x`) now work in insert mode instead of being swallowed ([#42](https://github.com/oribarilan/vimcode/issues/42)).
+- Escape from insert mode now moves cursor left, matching vim.
+- Clipboard now uses `wl-copy` on Wayland instead of `xclip`, which doesn't work there.
+
+## [0.14.0] — 2026-06-13
+
 ### Added
 
 - `/vim` toggle command to disable/enable vim mode. Persisted across restarts.
 - Startup toast when vim is disabled so users know why keybindings aren't active.
+- `V` selects the current line and enters visual mode.
 
 ### Fixed
 
@@ -278,7 +289,9 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/oribarilan/vimcode/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/oribarilan/vimcode/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/oribarilan/vimcode/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/oribarilan/vimcode/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/oribarilan/vimcode/compare/v0.12.0...v0.12.1

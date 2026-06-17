@@ -26,7 +26,7 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
 {
-  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.13.0"]
+  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.15.0"]
 }
 ```
 
@@ -40,7 +40,7 @@ To pass options, use the tuple form in `tui.json`:
 
 ```json
 {
-  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.12.2", { "updateCheck": false }]]
+  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.15.0", { "updateCheck": false }]]
 }
 ```
 
@@ -72,7 +72,7 @@ vimcode reads OpenCode's leader key from your `tui.json` keybinds and handles it
 
 In **normal and visual mode**, the leader key and the follow-up key pass straight through to OpenCode, so leader shortcuts (`<leader>c` for copy, etc.) work as expected.
 
-In **insert mode**, vimcode intercepts the leader key to prevent the leader menu from popping up while you type. If the leader is a printable key like space, the character still gets inserted normally.
+In **insert mode**, printable leaders (like space) insert their character. Non-printable leaders (like `ctrl+x`) pass through to OpenCode, so leader shortcuts work from any mode.
 
 This allows, for example, to use the popular vim-style `space` leader, set it in your `tui.json`:
 
@@ -104,6 +104,7 @@ The plugin checks GitHub for new versions once per day on startup. No other netw
 | `w` `b` `e` | Word forward, backward, end of word |
 | `0` `^` | Line start |
 | `$` | Line end |
+| `gg` | Buffer start |
 | `G` | Buffer end |
 
 All motions take counts: `3j` moves down 3 lines.
@@ -146,13 +147,14 @@ Counts work on both operator and motion: `2dd` deletes 2 lines, `d3w` deletes 3 
 
 ### Visual mode
 
-Press `v` in normal mode to enter character-wise visual mode. Motions extend the selection, operators act on it:
+Press `v` in normal mode to enter character-wise visual mode. Press `V` to select the current line. Motions extend the selection, operators act on it:
 
 | Key | Action |
 |-----|--------|
 | `d` `x` | Delete selection |
 | `c` | Delete selection, enter insert mode |
 | `y` | Yank (copy) selection |
+| `V` | Select current line |
 | `Escape` `v` | Exit visual mode |
 
 All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `0` `$` `G`, with counts.
@@ -169,6 +171,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 | `p` | Paste from yank register |
 | `:` | Command palette |
 | `:q` `:quit` `:wq` | Quit OpenCode (via command palette) |
+| `:vim` | Toggle vim mode on/off (persisted across restarts) |
 | `/` | Jump to message (session timeline) |
 | `[` `]` | Scroll conversation half-page up/down |
 | `{` `}` | Jump to previous/next message |
@@ -180,7 +183,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 
 ## Known gaps
 
-- `V`, `Ctrl+v` - only character-wise visual mode (`v`) is supported, no line-wise or block
+- `Ctrl+v` - block visual mode is not supported
 - `ciw`, `di"`, etc. (text objects) - not yet implemented
 - No persistent mode indicator - the toast fades after about a second. A slot-based indicator needs the host's JSX runtime, which doesn't resolve reliably from git-installed plugins ([#3](https://github.com/oribarilan/vimcode/issues/3)).
 

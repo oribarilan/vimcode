@@ -13,7 +13,7 @@ export function writeClipboard(text: string): void {
 function clipboardCmd(): [string, string[]] {
   if (process.platform === "darwin") return ["pbcopy", []];
   if (process.platform === "win32") return ["clip.exe", []];
-  // Linux: xclip is the most common. xsel and wl-copy also exist
-  // but async fallback chains add complexity for marginal gain.
+  if (process.env.WAYLAND_DISPLAY) return ["wl-copy", []];
+  // X11 fallback
   return ["xclip", ["-selection", "clipboard"]];
 }

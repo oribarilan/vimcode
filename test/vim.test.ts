@@ -31,6 +31,12 @@ function saveUndoSnapshots(actions: Action[]): Action[] {
   return actions.filter((a) => a.type === "saveUndoSnapshot");
 }
 
+function selectRanges(actions: Action[]): Array<{ start: number; end: number }> {
+  return actions
+    .filter((a): a is Extract<Action, { type: "selectRange" }> => a.type === "selectRange")
+    .map((a) => ({ start: a.start, end: a.end }));
+}
+
 const ev = (name: string, opts?: { shift?: boolean; ctrl?: boolean; meta?: boolean; super?: boolean }) => ({
   name,
   shift: opts?.shift ?? false,
@@ -220,37 +226,67 @@ describe("handleInsertKey", () => {
   });
 
   it("escape → consume, mode normal", () => {
-    const r = handleInsertKey(state, "escape", ev("escape"));
+    const r = handleInsertKey(state, "escape", ev("escape"), mockPrompt);
     expect(r.consume).toBe(true);
     expect(state.mode).toBe("normal");
     expect(r.actions).toContainEqual({ type: "mode", mode: "normal" });
   });
 
   it("enter → consume, input.newline", () => {
-    const r = handleInsertKey(state, "return", ev("return"));
+    const r = handleInsertKey(state, "return", ev("return"), mockPrompt);
     expect(r.consume).toBe(true);
     expect(cmds(r.actions)).toContain("input.newline");
   });
 
   it("ctrl+enter → consume, input.submit", () => {
-    const r = handleInsertKey(state, "return", ev("return", { ctrl: true }));
+    const r = handleInsertKey(state, "return", ev("return", { ctrl: true }), mockPrompt);
     expect(r.consume).toBe(true);
     expect(cmds(r.actions)).toContain("input.submit");
   });
 
   it("tab → consume, insertText tab", () => {
-    const r = handleInsertKey(state, "tab", ev("tab"));
+    const r = handleInsertKey(state, "tab", ev("tab"), mockPrompt);
     expect(r.consume).toBe(true);
     expect(r.actions).toContainEqual({ type: "insertText", text: "\t" });
   });
 
   it("regular key → passthrough", () => {
-    const r = handleInsertKey(state, "a", ev("a"));
+    const r = handleInsertKey(state, "a", ev("a"), mockPrompt);
     expect(r.consume).toBe(false);
   });
 
+  it("escape mid-line moves cursor one left", () => {
+    const midLinePrompt: PromptAccess = {
+      getLine: () => "hello world",
+      getLineCount: () => 1,
+      getCursorLine: () => 0,
+      getCursorOffset: () => 5,
+      getPlainText: () => "hello world",
+    };
+    const r = handleInsertKey(state, "escape", ev("escape"), midLinePrompt);
+    expect(r.consume).toBe(true);
+    expect(cursorTos(r.actions)).toEqual([4]);
+  });
+
+  it("escape at position 0 does not move cursor", () => {
+    const r = handleInsertKey(state, "escape", ev("escape"), mockPrompt);
+    expect(cursorTos(r.actions)).toEqual([]);
+  });
+
+  it("escape at start of line does not move cursor", () => {
+    const startOfLinePrompt: PromptAccess = {
+      getLine: (n) => ["hello world", "second line"][n] ?? "",
+      getLineCount: () => 2,
+      getCursorLine: () => 1,
+      getCursorOffset: () => 12,
+      getPlainText: () => "hello world\nsecond line",
+    };
+    const r = handleInsertKey(state, "escape", ev("escape"), startOfLinePrompt);
+    expect(cursorTos(r.actions)).toEqual([]);
+  });
+
   it("ctrl+o enters normal mode with oneShotNormal flag", () => {
-    const r = handleInsertKey(state, "o", ev("o", { ctrl: true }));
+    const r = handleInsertKey(state, "o", ev("o", { ctrl: true }), mockPrompt);
     expect(r.consume).toBe(true);
     expect(state.mode).toBe("normal");
     expect(state.oneShotNormal).toBe(true);
@@ -258,7 +294,7 @@ describe("handleInsertKey", () => {
   });
 
   it("ctrl+o emits (insert) mode action", () => {
-    const r = handleInsertKey(state, "o", ev("o", { ctrl: true }));
+    const r = handleInsertKey(state, "o", ev("o", { ctrl: true }), mockPrompt);
     expect(r.actions.some((a) => a.type === "mode" && a.mode === "(insert)")).toBe(true);
   });
 });
@@ -817,6 +853,43 @@ describe("handleNormalKey — visual mode entry", () => {
     expect(state.pendingOp).toBeNull();
     expect(state.mode).toBe("visual");
   });
+
+  it("V selects the current line and enters visual mode", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 1,
+      getCursorOffset: () => 8,
+      getPlainText: () => "first\nsecond\nthird",
+    };
+
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), prompt);
+
+    expect(r.consume).toBe(true);
+    expect(state.mode).toBe("visual");
+    expect(selectRanges(r.actions)).toEqual([{ start: 6, end: 12 }]);
+    expect(r.actions).toContainEqual({ type: "mode", mode: "visual" });
+  });
+
+  it("V selects the first line including its newline", () => {
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), mockPrompt);
+
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 11 }]);
+  });
+
+  it("V selects the last line without requiring a trailing newline", () => {
+    const prompt: PromptAccess = {
+      getLine: (n) => ["first", "second", "third"][n] ?? "",
+      getLineCount: () => 3,
+      getCursorLine: () => 2,
+      getCursorOffset: () => 15,
+      getPlainText: () => "first\nsecond\nthird",
+    };
+
+    const r = handleNormalKey(state, "V", ev("v", { shift: true }), prompt);
+
+    expect(selectRanges(r.actions)).toEqual([{ start: 13, end: 17 }]);
+  });
 });
 
 // ── handleVisualKey — motions ──────────────────────────────
@@ -973,7 +1046,7 @@ describe("handleVisualKey — exit and passthrough", () => {
 describe("Ctrl+O one-shot normal mode", () => {
   function enterOneShot() {
     state.mode = "insert";
-    handleInsertKey(state, "o", ev("o", { ctrl: true }));
+    handleInsertKey(state, "o", ev("o", { ctrl: true }), mockPrompt);
   }
 
   it("w auto-returns to insert", () => {

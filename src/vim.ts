@@ -161,10 +161,18 @@ export function translateKey(ev: KeyEvent): string {
   return key;
 }
 
-export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent): HandlerResult {
+export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent, prompt: PromptAccess): HandlerResult {
   if (ev.name === "escape") {
     state.mode = "normal";
-    return { consume: true, actions: [{ type: "mode", mode: "normal" }] };
+    const actions: Action[] = [];
+    // Vim moves cursor one left when leaving insert mode,
+    // unless at position 0 or start of line.
+    const offset = prompt.getCursorOffset();
+    if (offset > 0 && prompt.getPlainText()[offset - 1] !== "\n") {
+      actions.push({ type: "cursorTo", offset: offset - 1 });
+    }
+    actions.push({ type: "mode", mode: "normal" });
+    return { consume: true, actions };
   }
   if (ev.name === "return" && ev.ctrl) {
     return { consume: true, actions: [{ type: "cmd", cmd: "input.submit" }] };
@@ -447,6 +455,20 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   }
 
   // Visual mode entry
+  if (key === "V") {
+    const range = currentLineRange(prompt.getPlainText(), prompt.getCursorOffset());
+    state.mode = "visual";
+    state.oneShotNormal = false;
+    resetPending(state);
+    return {
+      consume: true,
+      actions: [
+        { type: "selectRange", start: range.start, end: range.end },
+        { type: "mode", mode: "visual" },
+      ],
+    };
+  }
+
   if (key === "v") {
     state.mode = "visual";
     state.oneShotNormal = false;
@@ -579,6 +601,14 @@ function resetPending(state: VimState) {
 
 function finishUndoableChange(actions: Action[]): HandlerResult {
   return { consume: true, actions: [{ type: "saveUndoSnapshot" }, ...actions] };
+}
+
+function currentLineRange(text: string, offset: number): { start: number; end: number } {
+  if (text.length === 0) return { start: 0, end: 0 };
+  const safeOffset = Math.min(Math.max(offset, 0), text.length - 1);
+  const start = text.lastIndexOf("\n", safeOffset - 1) + 1;
+  const newline = text.indexOf("\n", safeOffset);
+  return { start, end: newline === -1 ? text.length - 1 : newline };
 }
 
 function consumeCount(state: VimState): number {
