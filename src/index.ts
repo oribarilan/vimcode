@@ -80,8 +80,9 @@ const plugin: TuiPluginModule = {
     function applyActions(actions: Action[]) {
       let keepUndoSnapshotForBatch = false;
       for (const action of actions) {
-        // Any buffer-modifying action (other than our own deleteRange/undo)
-        // invalidates the undo snapshot.
+        // Buffer-modifying actions (cmd, insertText) clear the undo stack,
+        // unless this batch includes a saveUndoSnapshot (which sets
+        // keepUndoSnapshotForBatch to preserve the stack).
         if ((action.type === "cmd" || action.type === "insertText") && !keepUndoSnapshotForBatch) {
           undoSnapshots = [];
         }
