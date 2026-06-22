@@ -43,6 +43,39 @@ const plugin: TuiPluginModule = {
     let leaderPending = false;
     let leaderTimer: ReturnType<typeof setTimeout> | null = null;
 
+    // Track pending permissions/questions from child sessions via events.
+    // The plugin API's permission()/question() only covers the exact session
+    // ID, but subagent permissions live on child session IDs. Events fire
+    // globally, so we aggregate by root session.
+    const pendingChildPrompts = new Map<string, number>();
+
+    function trackPromptEvent(event: any, delta: number) {
+      const sessionID = event?.properties?.sessionID ?? event?.sessionID;
+      if (!sessionID) return;
+      const session = api.state?.session?.get?.(sessionID);
+      const rootId = session?.parentID ?? sessionID;
+      const count = (pendingChildPrompts.get(rootId) ?? 0) + delta;
+      if (count <= 0) pendingChildPrompts.delete(rootId);
+      else pendingChildPrompts.set(rootId, count);
+    }
+
+    const unsubPermsAsked = api.event?.on?.("permission.asked", (e: any) => trackPromptEvent(e, 1));
+    const unsubPermsReplied = api.event?.on?.("permission.replied", (e: any) => trackPromptEvent(e, -1));
+    const unsubQuestAsked = api.event?.on?.("question.asked", (e: any) => trackPromptEvent(e, 1));
+    const unsubQuestReplied = api.event?.on?.("question.replied", (e: any) => trackPromptEvent(e, -1));
+    api.lifecycle?.onDispose?.(() => { unsubPermsAsked?.(); unsubPermsReplied?.(); });
+    api.lifecycle?.onDispose?.(() => { unsubQuestAsked?.(); unsubQuestReplied?.(); });
+
+    function hasActivePrompts(sid: string): boolean {
+      const q = api.state.session.question(sid);
+      if (q && q.length > 0) return true;
+      const p = api.state.session.permission(sid);
+      if (p && p.length > 0) return true;
+      // Check child sessions tracked via events
+      if ((pendingChildPrompts.get(sid) ?? 0) > 0) return true;
+      return false;
+    }
+
     // Snapshots for single-step undo of vim changes.
     // The host editor's undo system splits repeated commands into multiple
     // entries, so we save/restore the buffer ourselves.
@@ -255,21 +288,17 @@ const plugin: TuiPluginModule = {
         const route = api.route.current;
         if (route.name === "session") {
           const sid = route.params?.sessionID;
-          if (sid) {
-            const q = api.state.session.question(sid);
-            const p = api.state.session.permission(sid);
-            if ((q && q.length > 0) || (p && p.length > 0)) {
-              // Consume the leader key so dispatchLayers() doesn't
-              // match it as a leader token, which would enter pending-
-              // sequence state instead of typing a space.
-              const matched = findMatchingLeader(ctx.event, leaderKeys);
-              if (matched) {
-                ctx.consume();
-                const ch = leaderChar(matched);
-                if (ch) api.renderer?.currentFocusedEditor?.insertText?.(ch);
-              }
-              return;
+          if (sid && hasActivePrompts(sid)) {
+            // Consume the leader key so dispatchLayers() doesn't
+            // match it as a leader token, which would enter pending-
+            // sequence state instead of typing a space.
+            const matched = findMatchingLeader(ctx.event, leaderKeys);
+            if (matched) {
+              ctx.consume();
+              const ch = leaderChar(matched);
+              if (ch) api.renderer?.currentFocusedEditor?.insertText?.(ch);
             }
+            return;
           }
         }
 

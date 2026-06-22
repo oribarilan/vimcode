@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Fixed
+
+- Enter/Escape now work on permission dialogs from subagent (child) sessions ([#47](https://github.com/oribarilan/vimcode/issues/47)). Previously, the pass-through check only looked at the current session's permissions, missing prompts from tasks running inside it.
+
 ## [0.15.0] — 2026-06-16
 
 ### Fixed
