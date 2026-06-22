@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Fixed
+
+- Enter/Escape now work on subagent permission dialogs instead of being consumed by vimcome ([#47](https://github.com/oribarilan/vimcode/issues/47)).
+
 ## [0.15.0] — 2026-06-16
 
 ### Fixed
