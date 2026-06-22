@@ -44,11 +44,11 @@ const plugin: TuiPluginModule = {
     let leaderTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Track pending permissions/questions from child sessions via events.
-    // The plugin API's permission()/question() only covers the exact session
-    // ID, but subagent permissions live on child session IDs. Events fire
-    // globally, so we aggregate by root session.
+    // permission()/question() only covers one session ID, but subagent
+    // prompts live on child IDs. Events fire globally; we aggregate by root.
     const pendingChildPrompts = new Map<string, number>();
 
+    // biome-ignore lint/suspicious/noExplicitAny: event shape is untyped in the plugin API
     function trackPromptEvent(event: any, delta: number) {
       const sessionID = event?.properties?.sessionID ?? event?.sessionID;
       if (!sessionID) return;
@@ -59,21 +59,27 @@ const plugin: TuiPluginModule = {
       else pendingChildPrompts.set(rootId, count);
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: event shape is untyped in the plugin API
     const unsubPermsAsked = api.event?.on?.("permission.asked", (e: any) => trackPromptEvent(e, 1));
+    // biome-ignore lint/suspicious/noExplicitAny: event shape is untyped in the plugin API
     const unsubPermsReplied = api.event?.on?.("permission.replied", (e: any) => trackPromptEvent(e, -1));
+    // biome-ignore lint/suspicious/noExplicitAny: event shape is untyped in the plugin API
     const unsubQuestAsked = api.event?.on?.("question.asked", (e: any) => trackPromptEvent(e, 1));
+    // biome-ignore lint/suspicious/noExplicitAny: event shape is untyped in the plugin API
     const unsubQuestReplied = api.event?.on?.("question.replied", (e: any) => trackPromptEvent(e, -1));
-    api.lifecycle?.onDispose?.(() => { unsubPermsAsked?.(); unsubPermsReplied?.(); });
-    api.lifecycle?.onDispose?.(() => { unsubQuestAsked?.(); unsubQuestReplied?.(); });
+    api.lifecycle?.onDispose?.(() => {
+      unsubPermsAsked?.();
+      unsubPermsReplied?.();
+      unsubQuestAsked?.();
+      unsubQuestReplied?.();
+    });
 
     function hasActivePrompts(sid: string): boolean {
       const q = api.state.session.question(sid);
       if (q && q.length > 0) return true;
       const p = api.state.session.permission(sid);
       if (p && p.length > 0) return true;
-      // Check child sessions tracked via events
-      if ((pendingChildPrompts.get(sid) ?? 0) > 0) return true;
-      return false;
+      return (pendingChildPrompts.get(sid) ?? 0) > 0;
     }
 
     // Snapshots for single-step undo of vim changes.
