@@ -8,9 +8,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-06-23
+
 ### Fixed
 
-- Enter/Escape now work on subagent permission dialogs instead of being consumed by vimcome ([#47](https://github.com/oribarilan/vimcode/issues/47)).
+- Enter/Escape now work on subagent permission dialogs instead of being consumed by vim ([#47](https://github.com/oribarilan/vimcode/issues/47)).
 
 ## [0.15.0] — 2026-06-16
 
@@ -293,7 +295,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/oribarilan/vimcode/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/oribarilan/vimcode/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/oribarilan/vimcode/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/oribarilan/vimcode/compare/v0.12.2...v0.13.0
