@@ -28,6 +28,7 @@ export type VimState = {
   yankRegister: string;
   oneShotNormal: boolean;
   disabled: boolean;
+  visualAnchor?: number;
 };
 
 export type KeyEvent = {
@@ -67,7 +68,6 @@ export const SELECT_MOTIONS: Record<string, string> = {
   k: "input.select.up",
   w: "input.select.word.forward",
   b: "input.select.word.backward",
-  e: "input.select.word.forward",
   "0": "input.select.line.home",
   "^": "input.select.line.home",
   $: "input.select.line.end",
@@ -458,6 +458,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   if (key === "V") {
     const range = currentLineRange(prompt.getPlainText(), prompt.getCursorOffset());
     state.mode = "visual";
+    state.visualAnchor = prompt.getCursorOffset();
     state.oneShotNormal = false;
     resetPending(state);
     return {
@@ -471,6 +472,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
 
   if (key === "v") {
     state.mode = "visual";
+    state.visualAnchor = prompt.getCursorOffset();
     state.oneShotNormal = false;
     resetPending(state);
     return { consume: true, actions: [{ type: "mode", mode: "visual" }] };
@@ -513,7 +515,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   return { consume: true, actions };
 }
 
-export function handleVisualKey(state: VimState, key: string, ev: KeyEvent): HandlerResult {
+export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prompt: PromptAccess): HandlerResult {
   if (ev.meta || ev.super) return PASS;
   if (ev.ctrl) return PASS;
 
@@ -558,6 +560,14 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent): Han
   if (key === "y") {
     actions.push({ type: "yankSelection" });
     enterNormal(state, actions);
+    return { consume: true, actions };
+  }
+
+  // e — extend selection to end of word (custom, not a host command)
+  if (key === "e") {
+    const n = consumeCount(state);
+    const target = endOfWord(prompt.getPlainText(), prompt.getCursorOffset(), n);
+    actions.push({ type: "selectRange", start: state.visualAnchor ?? 0, end: target });
     return { consume: true, actions };
   }
 

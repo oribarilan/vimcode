@@ -936,8 +936,23 @@ describe("handleVisualKey — motions", () => {
   });
 
   it("G dispatches input.select.buffer.end", () => {
-    const r = handleVisualKey(state, "G", ev("g", { shift: true }));
+    const r = handleVisualKey(state, "G", ev("g", { shift: true }), mockPrompt);
     expect(cmds(r.actions)).toEqual(["input.select.buffer.end"]);
+  });
+
+  it("e selects from visual anchor to end of word", () => {
+    // "hello world" with cursor at 0, anchor at 0 → end of "hello" is offset 4
+    state.visualAnchor = 0;
+    const r = handleVisualKey(state, "e", ev("e"), mockPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+  });
+
+  it("2e selects from visual anchor to end of 2nd word", () => {
+    // "hello world" with cursor at 0, anchor at 0 → end of "world" is offset 10
+    state.visualAnchor = 0;
+    handleVisualKey(state, "2", ev("2"), mockPrompt);
+    const r = handleVisualKey(state, "e", ev("e"), mockPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 10 }]);
   });
 
   it("g sets pendingChar, no actions", () => {

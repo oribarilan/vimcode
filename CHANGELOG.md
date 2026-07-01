@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Fixed
+
+- `e` in visual mode now moves to end of word instead of behaving like `w` ([#52](https://github.com/oribarilan/vimcode/issues/52)).
+
 ## [0.15.1] — 2026-06-23
 
 ### Fixed

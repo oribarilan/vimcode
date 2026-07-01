@@ -352,7 +352,7 @@ const plugin: TuiPluginModule = {
           state.mode === "insert"
             ? handleInsertKey(state, key, ctx.event, prompt)
             : state.mode === "visual"
-              ? handleVisualKey(state, key, ctx.event)
+              ? handleVisualKey(state, key, ctx.event, prompt)
               : handleNormalKey(state, key, ctx.event, prompt);
         if (handlerMode === "normal") finishOneShotIfComplete(state, result);
 
