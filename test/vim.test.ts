@@ -955,6 +955,26 @@ describe("handleVisualKey — motions", () => {
     expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 10 }]);
   });
 
+  it("e pressed twice extends selection to successive word ends", () => {
+    // "hello world" cursor at 0, anchor at 0
+    // First e → end of "hello" (offset 4), must also emit cursorTo
+    // Second e (cursor now at 4) → end of "world" (offset 10)
+    state.visualAnchor = 0;
+    let cursorPos = 0;
+    const prompt: PromptAccess = { ...mockPrompt, getCursorOffset: () => cursorPos };
+
+    const r1 = handleVisualKey(state, "e", ev("e"), prompt);
+    expect(selectRanges(r1.actions)).toEqual([{ start: 0, end: 4 }]);
+    expect(cursorTos(r1.actions)).toEqual([4]);
+
+    // Simulate effect layer applying the cursorTo action
+    cursorPos = cursorTos(r1.actions)[0];
+
+    const r2 = handleVisualKey(state, "e", ev("e"), prompt);
+    expect(selectRanges(r2.actions)).toEqual([{ start: 0, end: 10 }]);
+    expect(cursorTos(r2.actions)).toEqual([10]);
+  });
+
   it("g sets pendingChar, no actions", () => {
     const r = handleVisualKey(state, "g", ev("g"));
     expect(r.consume).toBe(true);

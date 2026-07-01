@@ -216,7 +216,9 @@ const plugin: TuiPluginModule = {
           }
           case "selectRange": {
             const editor = api.renderer?.currentFocusedEditor;
-            editor?.setSelectionInclusive?.(action.start, action.end);
+            if (editor) {
+              editor.setSelectionInclusive?.(action.start, action.end);
+            }
             break;
           }
         }
