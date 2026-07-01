@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.15.2] — 2026-07-01
+
 ### Fixed
 
 - `e` in visual mode now moves to end of word instead of behaving like `w` ([#52](https://github.com/oribarilan/vimcode/issues/52)).
@@ -299,7 +301,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.2...HEAD
+[0.15.2]: https://github.com/oribarilan/vimcode/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/oribarilan/vimcode/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/oribarilan/vimcode/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/oribarilan/vimcode/compare/v0.13.0...v0.14.0
