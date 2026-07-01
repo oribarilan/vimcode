@@ -568,6 +568,7 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
     const n = consumeCount(state);
     const target = endOfWord(prompt.getPlainText(), prompt.getCursorOffset(), n);
     actions.push({ type: "selectRange", start: state.visualAnchor ?? 0, end: target });
+    actions.push({ type: "cursorTo", offset: target });
     return { consume: true, actions };
   }
 

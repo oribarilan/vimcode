@@ -26,7 +26,7 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
 {
-  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.15.2"]
+  "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.15.3"]
 }
 ```
 
@@ -40,7 +40,7 @@ To pass options, use the tuple form in `tui.json`:
 
 ```json
 {
-  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.15.2", { "updateCheck": false }]]
+  "plugin": [["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.15.3", { "updateCheck": false }]]
 }
 ```
 

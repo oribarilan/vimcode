@@ -8,7 +8,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
-## [0.15.2] — 2026-07-01
+## [0.15.3] — 2026-07-01
+
+### Fixed
+
+- Repeated `e` in visual mode now extends the selection progressively instead of getting stuck after the first press.
 
 ### Fixed
 
@@ -301,7 +305,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.2...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.15.3...HEAD
+[0.15.3]: https://github.com/oribarilan/vimcode/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/oribarilan/vimcode/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/oribarilan/vimcode/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/oribarilan/vimcode/compare/v0.14.0...v0.15.0
