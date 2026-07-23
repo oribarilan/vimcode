@@ -76,12 +76,12 @@ test/
   fixtures.ts    (17 lines)   Prompt fixtures: mockPrompt, emptyPrompt
   vim/                        Per-module engine tests mirroring src/vim/:
     text.test.ts     (136)    endOfWord + charKind/isWhitespace/currentLineRange units
-    state.test.ts    (71)     createVimState, toggleVimMode
+    state.test.ts    (70)     createVimState, toggleVimMode
     util.test.ts     (31)     translateKey
     insert.test.ts   (92)     handleInsertKey
-    normal.test.ts   (620)    handleNormalKey branches
+    normal.test.ts   (655)    handleNormalKey branches
     visual.test.ts   (195)    handleVisualKey branches
-  integration.test.ts (411)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync
+  integration.test.ts (418)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
 ```
 

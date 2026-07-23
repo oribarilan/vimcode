@@ -12,6 +12,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 - Split the vim engine from a single `src/vim.ts` into a modular `src/vim/` tree (`types`, `text`, `tables`, `util`, `state`, `insert`, `normal`, `visual`) behind a thin barrel. No behavior change.
 
+### Fixed
+
+- `dgg` and `drx` no longer leave a dangling delete operator that corrupted the next motion (fallout of consolidating the two pending-state fields into a single discriminated union).
+
 ## [0.16.0] — 2026-08-31
 
 ### Added
