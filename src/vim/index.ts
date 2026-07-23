@@ -1,46 +1,15 @@
+import { consumeCount, enterInsert, enterNormal, exitVisual, resetPending } from "./state";
 import { DELETE_MOTION, MOTIONS, SELECT_MOTIONS } from "./tables";
 import { currentLineRange, endOfWord } from "./text";
 import type { Action, HandlerResult, KeyEvent, PromptAccess, VimState } from "./types";
 import { PASS, pushN } from "./util";
 
+export { createVimState, finishOneShotIfComplete, toggleVimMode } from "./state";
 export { endOfWord } from "./text";
 export type { Action, KeyEvent, PromptAccess, VimState } from "./types";
 export { translateKey } from "./util";
 
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
-
-export function createVimState(): VimState {
-  return {
-    mode: "insert",
-    pendingOp: null,
-    pendingChar: null,
-    count: 0,
-    yankRegister: "",
-    oneShotNormal: false,
-    disabled: false,
-  };
-}
-
-export function toggleVimMode(state: VimState): HandlerResult {
-  state.disabled = !state.disabled;
-  if (state.disabled) {
-    // Reset to clean insert mode so cursor style updates and no stale
-    // pending state carries over when re-enabled.
-    state.mode = "insert";
-    state.pendingOp = null;
-    state.pendingChar = null;
-    state.count = 0;
-    state.oneShotNormal = false;
-    return {
-      consume: true,
-      actions: [
-        { type: "toast", message: "Vim mode disabled" },
-        { type: "mode", mode: "insert" },
-      ],
-    };
-  }
-  return { consume: true, actions: [{ type: "toast", message: "Vim mode enabled" }] };
-}
 
 export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent, prompt: PromptAccess): HandlerResult {
   if (ev.name === "escape") {
@@ -472,53 +441,8 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
 
 // ── Helpers ──────────────────────────────────────────────────
 
-export function finishOneShotIfComplete(state: VimState, result: HandlerResult): void {
-  if (!state.oneShotNormal) return;
-  if (!result.consume) return;
-  if (state.pendingOp !== null || state.pendingChar !== null || state.count > 0) return;
-  const alreadyEnteringInsert = result.actions.some((a) => a.type === "mode" && a.mode === "insert");
-  if (alreadyEnteringInsert) {
-    state.oneShotNormal = false;
-    return;
-  }
-  state.oneShotNormal = false;
-  state.mode = "insert";
-  result.actions.push({ type: "mode", mode: "insert" });
-}
-
-function resetPending(state: VimState) {
-  state.pendingOp = null;
-  state.pendingChar = null;
-  state.count = 0;
-}
-
 function finishUndoableChange(actions: Action[]): HandlerResult {
   return { consume: true, actions: [{ type: "saveUndoSnapshot" }, ...actions] };
-}
-
-function consumeCount(state: VimState): number {
-  const n = state.count || 1;
-  state.count = 0;
-  return n;
-}
-
-function enterInsert(state: VimState, actions: Action[]) {
-  resetPending(state);
-  state.mode = "insert";
-  state.oneShotNormal = false;
-  actions.push({ type: "mode", mode: "insert" });
-}
-
-function enterNormal(state: VimState, actions: Action[]) {
-  state.mode = "normal";
-  state.count = 0;
-  state.oneShotNormal = false;
-  actions.push({ type: "mode", mode: "normal" });
-}
-
-function exitVisual(state: VimState, actions: Action[]) {
-  actions.push({ type: "clearSelection" });
-  enterNormal(state, actions);
 }
 
 function isInputEmpty(prompt: PromptAccess): boolean {
