@@ -57,14 +57,32 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (357 lines)  Plugin entry: intercept registration, action application
-  vim.ts         (645 lines)  Pure vim engine: state, handlers, command tables, types
+  index.ts       (395 lines)  Plugin entry: intercept registration, action application
+  vim/                        Pure vim engine (thin barrel re-exports the public surface):
+    index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
+    types.ts     (49 lines)   Action union, VimState, Mode, Operator, KeyEvent, HandlerResult, PromptAccess
+    text.ts      (36 lines)   Pure string algorithms: isWhitespace, charKind, endOfWord, currentLineRange
+    tables.ts    (35 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
+    util.ts      (19 lines)   State-agnostic primitives: translateKey, PASS, pushN
+    state.ts     (79 lines)   VimState lifecycle + transitions
+    insert.ts    (32 lines)   handleInsertKey
+    normal.ts    (338 lines)  handleNormalKey (+ file-local finishUndoableChange, isInputEmpty)
+    visual.ts    (78 lines)   handleVisualKey
   leader.ts      (73 lines)   Leader key matching: matchesKeyLike, findMatchingLeader, leaderChar
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  vim.test.ts    (1434 lines)  Characterization tests for all key handling branches
-  leader.test.ts (125 lines)   Unit tests for leader key matching functions
+  support.ts     (33 lines)   Shared assertion helpers + ev()
+  fixtures.ts    (17 lines)   Prompt fixtures: mockPrompt, emptyPrompt
+  vim/                        Per-module engine tests mirroring src/vim/:
+    text.test.ts     (136)    endOfWord + charKind/isWhitespace/currentLineRange units
+    state.test.ts    (71)     createVimState, toggleVimMode
+    util.test.ts     (31)     translateKey
+    insert.test.ts   (92)     handleInsertKey
+    normal.test.ts   (620)    handleNormalKey branches
+    visual.test.ts   (195)    handleVisualKey branches
+  integration.test.ts (411)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync
+  leader.test.ts (125 lines)  Unit tests for leader key matching functions
 ```
 
 **Data flow:**
@@ -75,7 +93,7 @@ KeyEvent → translateKey() → handleInsertKey/handleNormalKey/handleVisualKey(
                           (count, pendingOp, pendingChar, mode)                                  dispatches commands via setTimeout
 ```
 
-Handlers in `vim.ts` are pure — they take state + key + event, mutate state, return actions. They never touch `api`. The only file that calls `api.keymap.dispatchCommand` is `index.ts`.
+Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they take state + key + event, mutate state, return actions. They never touch `api`. The only file that calls `api.keymap.dispatchCommand` is `index.ts`. `src/vim/index.ts` is a strict barrel: it re-exports only the public surface (no `export *`, no internal helpers), and sibling modules import each other directly (`./types`, `./state`, …) never through the barrel.
 
 **Action types:**
 - `{ type: "cmd", cmd: string }` — dispatched via `setTimeout(() => api.keymap.dispatchCommand(cmd), 0)`
@@ -92,14 +110,14 @@ Handlers in `vim.ts` are pure — they take state + key + event, mutate state, r
 
 ### Adding a keybinding
 
-1. In `vim.ts`, find the right section in `handleNormalKey()` (motions, operators, special keys, insert entries)
+1. In `src/vim/normal.ts`, find the right section in `handleNormalKey()` (motions, operators, special keys, insert entries)
 2. Add the key check and return appropriate actions:
    ```ts
    if (key === "yourkey") {
      return { consume: true, actions: [{ type: "cmd", cmd: "input.some.command" }] }
    }
    ```
-3. Add a test in `test/vim.test.ts`:
+3. Add a test in the matching `test/vim/*.test.ts` (e.g. `test/vim/normal.test.ts`), importing helpers from `../support` and fixtures from `../fixtures`:
    ```ts
    it("yourkey dispatches some.command", () => {
      const result = handleNormalKey(state, "yourkey", ev("yourkey"), mockPrompt)
@@ -110,7 +128,7 @@ Handlers in `vim.ts` are pure — they take state + key + event, mutate state, r
 
 ### Adding an operator+motion combo
 
-Operators (d/c/y) use two tables: `MOTIONS` maps key → standalone cursor command, `DELETE_MOTION` maps key → destructive command. When `pendingOp` is set and a motion key arrives, `handleNormalKey` looks up `DELETE_MOTION[key]` and dispatches it.
+Operators (d/c/y) use two tables in `src/vim/tables.ts`: `MOTIONS` maps key → standalone cursor command, `DELETE_MOTION` maps key → destructive command. When `pendingOp` is set and a motion key arrives, `handleNormalKey` (in `src/vim/normal.ts`) looks up `DELETE_MOTION[key]` and dispatches it.
 
 To add a new motion that works with operators:
 1. Add the standalone motion to `MOTIONS`: `{ "yourkey": "input.move.whatever" }`
@@ -146,7 +164,9 @@ Branch naming: `type/description` — e.g. `feat/replace-char`, `fix/escape-hand
 
 **No classes.** Use plain objects for state (`VimState`), plain functions for behavior. Pass state by reference, mutate it directly. Return results as data.
 
-**Single responsibility per file.** `vim.ts` owns all key handling logic and state transitions. `index.ts` owns all OpenCode API interaction. `clipboard.ts` owns platform I/O. Don't mix these concerns.
+**Single responsibility per file.** The `src/vim/` engine is split by concern: `types.ts` (data), `text.ts`/`tables.ts` (pure algorithms + keybinding maps), `util.ts`/`state.ts` (state-agnostic primitives + VimState lifecycle), and one handler per mode (`insert.ts`/`normal.ts`/`visual.ts`). `src/index.ts` owns all OpenCode API interaction. `clipboard.ts` owns platform I/O. Don't mix these concerns.
+
+**Barrel firewall + import discipline.** `src/vim/index.ts` re-exports only the public surface (explicit named re-exports, no `export *`, no internal helpers). Sibling modules import each other directly (`./types`, `./state`, `./text`, `./tables`, `./util`) and must never import from the barrel `./index` — barrel-import + barrel-re-export is a circular-import trap that can hand back `undefined` at runtime. Nothing under `src/vim/` may touch the plugin `api`.
 
 **Comments explain why, not what.** The code should read clearly without narration. Reserve comments for non-obvious decisions (like why `setTimeout` is needed for dispatch, or why `g` doesn't wait for a second keypress).
 
@@ -156,11 +176,11 @@ Branch naming: `type/description` — e.g. `feat/replace-char`, `fix/escape-hand
 
 **Every mode transition emits a `mode` action.** The `Mode` type is the single source of truth for all displayable modes — including transient states like `"(insert)"` (one-shot normal). Never represent a mode as a separate boolean flag with a toast side-channel. If something changes what mode the user is in, it goes through the `Mode` type and a `{ type: "mode" }` action.
 
-**Keep `vim.ts` under 500 lines.** If it grows past that, split by concern (motions, operators, insert entries). The handlers are already structured with clear sections — those become natural file boundaries.
+**Keep each `src/vim/` module focused and under 500 lines.** The engine was split out of a single `vim.ts` once it crossed that line; the handlers already have clear internal sections, so if one grows past 500 again, split it further by concern. The barrel (`index.ts`) stays a pure re-export firewall — never add logic there.
 
 **Shifted key translation** happens in `translateKey()` before the handler sees the key. Handlers work with normalized keys (`$` not `shift+4`, `G` not `shift+g`). Add new shift mappings in `translateKey`, not in handlers.
 
-**TypeScript strictness.** `strict: true` in tsconfig. No `any` in `vim.ts` or `test/`. The `api` parameter in `index.ts` is typed as `any` because the plugin types come from peer deps that may not be installed locally — that's the one acceptable use.
+**TypeScript strictness.** `strict: true` in tsconfig. No `any` in `src/vim/` or `test/`. The `api` parameter in `index.ts` is typed as `any` because the plugin types come from peer deps that may not be installed locally — that's the one acceptable use.
 
 **Cross-platform.** All code must work on macOS, Linux, and Windows. No platform-specific assumptions without a runtime `process.platform` check and fallbacks for other platforms.
 

@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Changed
+
+- Split the vim engine from a single `src/vim.ts` into a modular `src/vim/` tree (`types`, `text`, `tables`, `util`, `state`, `insert`, `normal`, `visual`) behind a thin barrel. No behavior change.
+
 ## [0.16.0] — 2026-08-31
 
 ### Added
