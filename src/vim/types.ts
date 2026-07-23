@@ -1,5 +1,7 @@
 export type Mode = "normal" | "insert" | "visual" | "(insert)";
-export type Operator = "d" | "c" | "y" | null;
+export type Operator = "d" | "c" | "y";
+
+export type Pending = { kind: "none" } | { kind: "operator"; op: Operator } | { kind: "goto" } | { kind: "replace" };
 
 export type Action =
   | { type: "cmd"; cmd: string }
@@ -22,8 +24,7 @@ export type HandlerResult = {
 
 export type VimState = {
   mode: Mode;
-  pendingOp: Operator;
-  pendingChar: "r" | "g" | null;
+  pending: Pending;
   count: number;
   yankRegister: string;
   oneShotNormal: boolean;

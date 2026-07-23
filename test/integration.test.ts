@@ -187,6 +187,13 @@ describe("Ctrl+O one-shot normal mode", () => {
     expect(state.oneShotNormal).toBe(false);
     expect(result.actions.filter((a) => a.type === "mode" && a.mode === "insert").length).toBe(1);
   });
+
+  it("Ctrl+O one-shot stays in normal mode while an operator is pending", () => {
+    state.oneShotNormal = true;
+    const result = handleNormalKey(state, "d", ev("d"), mockPrompt);
+    finishOneShotIfComplete(state, result);
+    expect(state.mode).toBe("normal");
+  });
 });
 
 describe("version sync", () => {

@@ -30,12 +30,11 @@ describe("toggleVimMode", () => {
   it("resets mode to insert when disabling", () => {
     const s = createVimState();
     s.mode = "normal";
-    s.pendingOp = "d";
+    s.pending = { kind: "operator", op: "d" };
     s.count = 3;
     toggleVimMode(s);
     expect(s.mode).toBe("insert");
-    expect(s.pendingOp).toBeNull();
-    expect(s.pendingChar).toBeNull();
+    expect(s.pending).toEqual({ kind: "none" });
     expect(s.count).toBe(0);
     expect(s.oneShotNormal).toBe(false);
   });

@@ -55,11 +55,11 @@ describe("handleNormalKey — motions", () => {
     expect(state.count).toBe(10);
   });
 
-  it("g sets pendingChar, no actions", () => {
+  it("g sets pending goto, no actions", () => {
     const r = handleNormalKey(state, "g", ev("g"), mockPrompt);
     expect(r.consume).toBe(true);
     expect(r.actions).toEqual([]);
-    expect(state.pendingChar).toBe("g");
+    expect(state.pending).toEqual({ kind: "goto" });
   });
 });
 
@@ -71,13 +71,13 @@ describe("handleNormalKey — g prefix", () => {
     const r = handleNormalKey(state, "g", ev("g"), mockPrompt);
     expect(r.consume).toBe(true);
     expect(cursorTos(r.actions)).toEqual([0]);
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
   });
 
   it("g then Escape cancels pending, no movement", () => {
     handleNormalKey(state, "g", ev("g"), mockPrompt);
     const r = handleNormalKey(state, "escape", ev("escape"), mockPrompt);
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
     expect(r.actions).toEqual([]);
   });
 
@@ -85,7 +85,7 @@ describe("handleNormalKey — g prefix", () => {
     handleNormalKey(state, "g", ev("g"), mockPrompt);
     const r = handleNormalKey(state, "z", ev("z"), mockPrompt);
     expect(r.consume).toBe(true);
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
     expect(cursorTos(r.actions)).toEqual([]);
     expect(cmds(r.actions)).toEqual([]);
   });
@@ -152,7 +152,7 @@ describe("handleNormalKey — e motion", () => {
 describe("handleNormalKey — operators", () => {
   it("dd dispatches input.delete.line", () => {
     handleNormalKey(state, "d", ev("d"), mockPrompt);
-    expect(state.pendingOp).toBe("d");
+    expect(state.pending).toEqual({ kind: "operator", op: "d" });
     const r = handleNormalKey(state, "d", ev("d"), mockPrompt);
     expect(cmds(r.actions)).toEqual(["input.delete.line"]);
   });
@@ -408,22 +408,22 @@ describe("handleNormalKey — special keys", () => {
     expect(r.consume).toBe(false);
   });
 
-  it("escape → passthrough, resets pendingOp", () => {
-    state.pendingOp = "d";
+  it("escape → passthrough, resets pending operator", () => {
+    state.pending = { kind: "operator", op: "d" };
     const r = handleNormalKey(state, "escape", ev("escape"), mockPrompt);
     expect(r.consume).toBe(false);
-    expect(state.pendingOp).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
   });
 });
 
 // ── handleNormalKey — replace (r) ──────────────────────────
 
 describe("handleNormalKey — replace (r)", () => {
-  it("r sets pendingChar, consumes key, no commands", () => {
+  it("r sets pending replace, consumes key, no commands", () => {
     const r = handleNormalKey(state, "r", ev("r"), mockPrompt);
     expect(r.consume).toBe(true);
     expect(r.actions).toEqual([]);
-    expect(state.pendingChar).toBe("r");
+    expect(state.pending).toEqual({ kind: "replace" });
   });
 
   it("r then a → input.delete + insertText('a'), stays normal", () => {
@@ -433,7 +433,7 @@ describe("handleNormalKey — replace (r)", () => {
     expect(cmds(r.actions)).toEqual(["input.delete"]);
     expect(r.actions).toContainEqual({ type: "insertText", text: "a" });
     expect(state.mode).toBe("normal");
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
   });
 
   it("3ra → 3x input.delete + insertText('aaa')", () => {
@@ -447,7 +447,7 @@ describe("handleNormalKey — replace (r)", () => {
   it("r then escape → cancels, no commands", () => {
     handleNormalKey(state, "r", ev("r"), mockPrompt);
     const r = handleNormalKey(state, "escape", ev("escape"), mockPrompt);
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
     expect(cmds(r.actions)).toEqual([]);
   });
 
@@ -575,9 +575,9 @@ describe("handleNormalKey — visual mode entry", () => {
   });
 
   it("v clears pending operator", () => {
-    state.pendingOp = "d";
+    state.pending = { kind: "operator", op: "d" };
     handleNormalKey(state, "v", ev("v"), mockPrompt);
-    expect(state.pendingOp).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
     expect(state.mode).toBe("visual");
   });
 
@@ -616,5 +616,40 @@ describe("handleNormalKey — visual mode entry", () => {
     const r = handleNormalKey(state, "V", ev("v", { shift: true }), prompt);
 
     expect(selectRanges(r.actions)).toEqual([{ start: 13, end: 17 }]);
+  });
+});
+
+// ── handleNormalKey — pending cleanup ──────────────────────
+
+describe("handleNormalKey — pending cleanup", () => {
+  it("dgg does not leave a dangling operator", () => {
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    expect(state.pending).toEqual({ kind: "none" });
+  });
+
+  it("dgg then w moves by word (the old dangling 'd' would have deleted it)", () => {
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    handleNormalKey(state, "g", ev("g"), mockPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    expect(cmds(r.actions)).toEqual(["input.word.forward"]); // NOT input.delete.word.forward
+  });
+
+  it("drx replaces the char and clears pending", () => {
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    handleNormalKey(state, "r", ev("r"), mockPrompt);
+    const r = handleNormalKey(state, "x", ev("x"), mockPrompt);
+    expect(state.pending).toEqual({ kind: "none" });
+    expect(r.actions.some((a) => a.type === "insertText")).toBe(true);
+  });
+
+  it("drx then w moves by word (no dangling delete-operator)", () => {
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    handleNormalKey(state, "r", ev("r"), mockPrompt);
+    handleNormalKey(state, "x", ev("x"), mockPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
+    expect(cmds(r.actions)).toEqual(["input.word.forward"]);
   });
 });

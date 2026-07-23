@@ -3,8 +3,7 @@ import type { Action, HandlerResult, VimState } from "./types";
 export function createVimState(): VimState {
   return {
     mode: "insert",
-    pendingOp: null,
-    pendingChar: null,
+    pending: { kind: "none" },
     count: 0,
     yankRegister: "",
     oneShotNormal: false,
@@ -18,8 +17,7 @@ export function toggleVimMode(state: VimState): HandlerResult {
     // Reset to clean insert mode so cursor style updates and no stale
     // pending state carries over when re-enabled.
     state.mode = "insert";
-    state.pendingOp = null;
-    state.pendingChar = null;
+    state.pending = { kind: "none" };
     state.count = 0;
     state.oneShotNormal = false;
     return {
@@ -36,7 +34,7 @@ export function toggleVimMode(state: VimState): HandlerResult {
 export function finishOneShotIfComplete(state: VimState, result: HandlerResult): void {
   if (!state.oneShotNormal) return;
   if (!result.consume) return;
-  if (state.pendingOp !== null || state.pendingChar !== null || state.count > 0) return;
+  if (state.pending.kind !== "none" || state.count > 0) return;
   const alreadyEnteringInsert = result.actions.some((a) => a.type === "mode" && a.mode === "insert");
   if (alreadyEnteringInsert) {
     state.oneShotNormal = false;
@@ -48,8 +46,7 @@ export function finishOneShotIfComplete(state: VimState, result: HandlerResult):
 }
 
 export function resetPending(state: VimState) {
-  state.pendingOp = null;
-  state.pendingChar = null;
+  state.pending = { kind: "none" };
   state.count = 0;
 }
 

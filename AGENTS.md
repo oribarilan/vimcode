@@ -90,7 +90,7 @@ test/
 KeyEvent → translateKey() → handleInsertKey/handleNormalKey/handleVisualKey() → HandlerResult { consume, actions[] }
                                     ↓                                                         ↓
                              mutates VimState                                       applyActions() in index.ts
-                          (count, pendingOp, pendingChar, mode)                                  dispatches commands via setTimeout
+                          (count, pending, mode)                                  dispatches commands via setTimeout
 ```
 
 Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they take state + key + event, mutate state, return actions. They never touch `api`. The only file that calls `api.keymap.dispatchCommand` is `index.ts`. `src/vim/index.ts` is a strict barrel: it re-exports only the public surface (no `export *`, no internal helpers), and sibling modules import each other directly (`./types`, `./state`, …) never through the barrel.
@@ -128,12 +128,12 @@ Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they
 
 ### Adding an operator+motion combo
 
-Operators (d/c/y) use two tables in `src/vim/tables.ts`: `MOTIONS` maps key → standalone cursor command, `DELETE_MOTION` maps key → destructive command. When `pendingOp` is set and a motion key arrives, `handleNormalKey` (in `src/vim/normal.ts`) looks up `DELETE_MOTION[key]` and dispatches it.
+Operators (d/c/y) use two tables in `src/vim/tables.ts`: `MOTIONS` maps key → standalone cursor command, `DELETE_MOTION` maps key → destructive command. When an operator is pending and a motion key arrives, `handleNormalKey` (in `src/vim/normal.ts`) looks up `DELETE_MOTION[key]` and dispatches it.
 
 To add a new motion that works with operators:
 1. Add the standalone motion to `MOTIONS`: `{ "yourkey": "input.move.whatever" }`
 2. Add the destructive version to `DELETE_MOTION`: `{ "yourkey": "input.delete.whatever" }`
-3. If the motion needs special handling with operators (like j/k which delete multiple lines), add an explicit branch in the `pendingOp && key in MOTIONS` section.
+3. If the motion needs special handling with operators (like j/k which delete multiple lines), add an explicit branch in the `state.pending.kind === "operator" && key in MOTIONS` section.
 
 ### Known limitations
 

@@ -93,11 +93,11 @@ describe("handleVisualKey — motions", () => {
     expect(cursorTos(r2.actions)).toEqual([10]);
   });
 
-  it("g sets pendingChar, no actions", () => {
+  it("g sets pending goto, no actions", () => {
     const r = handleVisualKey(state, "g", ev("g"));
     expect(r.consume).toBe(true);
     expect(r.actions).toEqual([]);
-    expect(state.pendingChar).toBe("g");
+    expect(state.pending).toEqual({ kind: "goto" });
   });
 
   it("gg selects to buffer home", () => {
@@ -105,13 +105,13 @@ describe("handleVisualKey — motions", () => {
     const r = handleVisualKey(state, "g", ev("g"));
     expect(r.consume).toBe(true);
     expect(cmds(r.actions)).toEqual(["input.select.buffer.home"]);
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
   });
 
   it("g then Escape in visual cancels pending, stays visual", () => {
     handleVisualKey(state, "g", ev("g"));
     handleVisualKey(state, "escape", ev("escape"));
-    expect(state.pendingChar).toBeNull();
+    expect(state.pending).toEqual({ kind: "none" });
     // escape also exits visual mode
     expect(state.mode).toBe("normal");
   });

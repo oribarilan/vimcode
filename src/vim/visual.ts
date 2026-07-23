@@ -11,8 +11,8 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
   const actions: Action[] = [];
 
   // Pending g prefix in visual mode
-  if (state.pendingChar === "g") {
-    state.pendingChar = null;
+  if (state.pending.kind === "goto") {
+    state.pending = { kind: "none" };
     if (key === "g") {
       actions.push({ type: "cmd", cmd: "input.select.buffer.home" });
       state.count = 0;
@@ -69,7 +69,7 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
 
   // g prefix — wait for second keypress
   if (key === "g") {
-    state.pendingChar = "g";
+    state.pending = { kind: "goto" };
     return { consume: true, actions };
   }
 
