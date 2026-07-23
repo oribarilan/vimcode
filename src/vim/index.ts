@@ -1,44 +1,9 @@
+import { DELETE_MOTION, MOTIONS, SELECT_MOTIONS } from "./tables";
 import { currentLineRange, endOfWord } from "./text";
 import type { Action, HandlerResult, KeyEvent, PromptAccess, VimState } from "./types";
 
 export { endOfWord } from "./text";
 export type { Action, KeyEvent, PromptAccess, VimState } from "./types";
-
-export const MOTIONS: Record<string, string> = {
-  h: "input.move.left",
-  l: "input.move.right",
-  j: "input.move.down",
-  k: "input.move.up",
-  w: "input.word.forward",
-  b: "input.word.backward",
-  "0": "input.line.home",
-  "^": "input.line.home",
-  $: "input.line.end",
-  G: "input.buffer.end",
-};
-
-export const SELECT_MOTIONS: Record<string, string> = {
-  h: "input.select.left",
-  l: "input.select.right",
-  j: "input.select.down",
-  k: "input.select.up",
-  w: "input.select.word.forward",
-  b: "input.select.word.backward",
-  "0": "input.select.line.home",
-  "^": "input.select.line.home",
-  $: "input.select.line.end",
-  G: "input.select.buffer.end",
-};
-
-const DELETE_MOTION: Record<string, string> = {
-  w: "input.delete.word.forward",
-  b: "input.delete.word.backward",
-  $: "input.delete.to.line.end",
-  "0": "input.delete.to.line.start",
-  "^": "input.delete.to.line.start",
-  h: "input.backspace",
-  l: "input.delete",
-};
 
 const PASS: HandlerResult = { consume: false, actions: [] };
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
