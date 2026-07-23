@@ -408,6 +408,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       return finishUndoableChange(actions);
     }
 
+    // unreachable: every MOTIONS key reaching here has a DELETE_MOTION entry (j/k/G handled above)
     resetPending(state);
     return { consume: true, actions };
   }

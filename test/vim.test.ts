@@ -669,6 +669,22 @@ describe("handleNormalKey — special keys", () => {
     expect(cmds(r.actions)).toEqual(["input.redo"]);
   });
 
+  it("Enter in normal mode submits the prompt", () => {
+    const r = handleNormalKey(state, "return", ev("return"), mockPrompt);
+    expect(cmds(r.actions)).toEqual(["input.submit"]);
+  });
+
+  it("x deletes the character under the cursor", () => {
+    const r = handleNormalKey(state, "x", ev("x"), mockPrompt);
+    expect(cmds(r.actions)).toEqual(["input.delete"]);
+  });
+
+  it("3x deletes three characters", () => {
+    handleNormalKey(state, "3", ev("3"), mockPrompt);
+    const r = handleNormalKey(state, "x", ev("x"), mockPrompt);
+    expect(cmds(r.actions)).toEqual(["input.delete", "input.delete", "input.delete"]);
+  });
+
   it("p with yankRegister set pastes", () => {
     state.yankRegister = "yanked text\n";
     const r = handleNormalKey(state, "p", ev("p"), mockPrompt);
@@ -1244,6 +1260,14 @@ describe("Ctrl+O one-shot normal mode", () => {
     const r = handleNormalKey(state, "w", ev("w"), mockPrompt);
     finishOneShotIfComplete(state, r);
     expect(state.mode).toBe("normal");
+  });
+
+  it("finishOneShotIfComplete does not double-append insert when the result already enters insert", () => {
+    state.oneShotNormal = true;
+    const result = { consume: true, actions: [{ type: "mode", mode: "insert" } as const] };
+    finishOneShotIfComplete(state, result);
+    expect(state.oneShotNormal).toBe(false);
+    expect(result.actions.filter((a) => a.type === "mode" && a.mode === "insert").length).toBe(1);
   });
 });
 
