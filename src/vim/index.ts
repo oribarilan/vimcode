@@ -1,11 +1,12 @@
 import { DELETE_MOTION, MOTIONS, SELECT_MOTIONS } from "./tables";
 import { currentLineRange, endOfWord } from "./text";
 import type { Action, HandlerResult, KeyEvent, PromptAccess, VimState } from "./types";
+import { PASS, pushN } from "./util";
 
 export { endOfWord } from "./text";
 export type { Action, KeyEvent, PromptAccess, VimState } from "./types";
+export { translateKey } from "./util";
 
-const PASS: HandlerResult = { consume: false, actions: [] };
 const _CONSUME: HandlerResult = { consume: true, actions: [] };
 
 export function createVimState(): VimState {
@@ -39,18 +40,6 @@ export function toggleVimMode(state: VimState): HandlerResult {
     };
   }
   return { consume: true, actions: [{ type: "toast", message: "Vim mode enabled" }] };
-}
-
-export function translateKey(ev: KeyEvent): string {
-  let key = ev.name;
-  if (ev.shift && ev.name.length === 1) {
-    if (/[a-z]/.test(ev.name)) key = ev.name.toUpperCase();
-    else if (ev.name === "4") key = "$";
-    else if (ev.name === "6") key = "^";
-    else if (ev.name === "[") key = "{";
-    else if (ev.name === "]") key = "}";
-  }
-  return key;
 }
 
 export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent, prompt: PromptAccess): HandlerResult {
@@ -530,10 +519,6 @@ function enterNormal(state: VimState, actions: Action[]) {
 function exitVisual(state: VimState, actions: Action[]) {
   actions.push({ type: "clearSelection" });
   enterNormal(state, actions);
-}
-
-function pushN(actions: Action[], cmd: string, n: number) {
-  for (let i = 0; i < n; i++) actions.push({ type: "cmd", cmd });
 }
 
 function isInputEmpty(prompt: PromptAccess): boolean {
