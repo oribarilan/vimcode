@@ -263,9 +263,25 @@ const plugin: TuiPluginModule = {
       slashName: cmd,
       run: exitRun,
     }));
+    // `:w` is the muscle-memory "save" for vim users. Sessions auto-persist,
+    // so the natural mapping is to send the prompt instead of (as before)
+    // autocompleting to `:wq` and quitting OpenCode.
+    const submitRun = async () => {
+      setTimeout(() => api.keymap.dispatchCommand("input.submit"), 0);
+    };
+    const submitCommands = ["w", "write"].map((cmd) => ({
+      name: `vimcode.${cmd}`,
+      title: `:${cmd}`,
+      category: "Vim",
+      namespace: "palette",
+      desc: "Send prompt",
+      slashName: cmd,
+      run: submitRun,
+    }));
     api.keymap.registerLayer?.({
       commands: [
         ...exitCommands,
+        ...submitCommands,
         {
           name: "vimcode.vim",
           title: ":vim",
