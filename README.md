@@ -170,6 +170,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 | `Ctrl+r` | Redo |
 | `p` | Paste from yank register |
 | `:` | Command palette |
+| `:w` `:write` | Send prompt (via command palette) |
 | `:q` `:quit` `:wq` | Quit OpenCode (via command palette) |
 | `:vim` | Toggle vim mode on/off (persisted across restarts) |
 | `/` | Jump to message (session timeline) |
