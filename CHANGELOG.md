@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- `:w` and `:write` now send the prompt instead of autocompleting to `:wq` and quitting OpenCode. Sessions auto-persist, so the natural mapping for vim users' reflexive "save" is to submit the current prompt. `:wq` still quits.
+
 ## [0.15.3] — 2026-07-01
 
 ### Fixed
