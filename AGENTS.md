@@ -57,16 +57,16 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (395 lines)  Plugin entry: intercept registration, action application
+  index.ts       (408 lines)  Plugin entry: intercept registration, action application
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
-    types.ts     (49 lines)   Action union, VimState, Mode, Operator, KeyEvent, HandlerResult, PromptAccess
+    types.ts     (50 lines)   Action union, VimState, Mode, Operator, KeyEvent, HandlerResult, PromptAccess
     text.ts      (36 lines)   Pure string algorithms: isWhitespace, charKind, endOfWord, currentLineRange
     tables.ts    (35 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
     util.ts      (19 lines)   State-agnostic primitives: translateKey, PASS, pushN
-    state.ts     (79 lines)   VimState lifecycle + transitions
+    state.ts     (76 lines)   VimState lifecycle + transitions
     insert.ts    (32 lines)   handleInsertKey
-    normal.ts    (338 lines)  handleNormalKey (+ file-local finishUndoableChange, isInputEmpty)
+    normal.ts    (340 lines)  handleNormalKey (+ file-local finishUndoableChange, isInputEmpty)
     visual.ts    (78 lines)   handleVisualKey
   leader.ts      (73 lines)   Leader key matching: matchesKeyLike, findMatchingLeader, leaderChar
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
