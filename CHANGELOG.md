@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-09-02
+
 ### Changed
 
 - Redesigned the vim engine into a modular architecture for easier maintenance and future keybindings. No change to existing keybindings or behavior.
@@ -319,7 +321,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/oribarilan/vimcode/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/oribarilan/vimcode/compare/v0.15.3...v0.16.0
 [0.15.3]: https://github.com/oribarilan/vimcode/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/oribarilan/vimcode/compare/v0.15.1...v0.15.2
