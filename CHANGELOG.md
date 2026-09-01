@@ -10,11 +10,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Changed
 
-- Split the vim engine from a single `src/vim.ts` into a modular `src/vim/` tree (`types`, `text`, `tables`, `util`, `state`, `insert`, `normal`, `visual`) behind a thin barrel. No behavior change.
+- Redesigned the vim engine into a modular architecture for easier maintenance and future keybindings. No change to existing keybindings or behavior.
 
 ### Fixed
 
-- `dgg` and `drx` no longer leave a dangling delete operator that corrupted the next motion (fallout of consolidating the two pending-state fields into a single discriminated union).
+- `dgg` and `drx` no longer leave a stray operator that affected the next keypress.
 
 ## [0.16.0] — 2026-08-31
 
