@@ -14,6 +14,13 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return PASS;
   }
 
+  // Arrow keys are host navigation, not vim motions. Pass them through so
+  // OpenCode handles them (e.g. exiting the subagent view from normal mode,
+  // issue #63). Consuming them here would swallow the key and trap the user.
+  if (ev.name === "up" || ev.name === "down" || ev.name === "left" || ev.name === "right") {
+    return PASS;
+  }
+
   if (ev.name === "escape") {
     if (state.oneShotNormal) {
       state.oneShotNormal = false;

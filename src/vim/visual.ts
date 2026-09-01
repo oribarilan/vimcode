@@ -8,6 +8,10 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
   if (ev.meta || ev.super) return PASS;
   if (ev.ctrl) return PASS;
 
+  // Arrow keys are host navigation, not selection motions, so pass them
+  // through so vimcode never traps them (issue #63).
+  if (ev.name === "up" || ev.name === "down" || ev.name === "left" || ev.name === "right") return PASS;
+
   const actions: Action[] = [];
 
   // Pending g prefix in visual mode

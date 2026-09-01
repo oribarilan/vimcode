@@ -416,3 +416,62 @@ describe("undo snapshot — deleteRange + u", () => {
     expect(dispatched).toContain("input.undo");
   });
 });
+
+// ── arrow keys pass through the intercept (issue #63) ─────
+
+describe("arrow keys pass through the intercept", () => {
+  // #63: in normal mode the intercept consumed arrow keys, so OpenCode never
+  // saw them and couldn't exit the subagent view. This drives the real
+  // pipeline (plugin.tui → key intercept) and asserts consume() is not called
+  // for arrows, while a vim motion still is.
+  async function setup() {
+    const plugin = (await import("../src/index")).default;
+    // biome-ignore lint/suspicious/noExplicitAny: test mock
+    let handler: (ctx: any) => void;
+
+    const api = {
+      renderer: { currentFocusedEditor: undefined },
+      ui: { toast: () => {}, dialog: { open: false } },
+      keymap: {
+        intercept: (_e: string, h: typeof handler) => {
+          handler = h;
+        },
+        dispatchCommand: () => ({ ok: false }),
+      },
+      route: { current: { name: "home", params: {} } },
+      state: { session: { question: () => [], permission: () => [] } },
+      lifecycle: { onDispose: () => {} },
+      kv: {},
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock API
+    await plugin.tui(api as any, { updateCheck: false } as any, undefined as any);
+
+    // Returns whether the intercept consumed the key (i.e. called consume()).
+    const press = (name: string, opts: Record<string, boolean> = {}) => {
+      let consumed = false;
+      handler?.({
+        event: { name, eventType: "press", ...opts },
+        consume: () => {
+          consumed = true;
+        },
+      });
+      return consumed;
+    };
+
+    press("escape"); // leave insert, enter normal mode
+    return { press };
+  }
+
+  for (const arrow of ["up", "down", "left", "right"] as const) {
+    it(`${arrow} in normal mode is not consumed, so the host handles it`, async () => {
+      const { press } = await setup();
+      expect(press(arrow)).toBe(false);
+    });
+  }
+
+  it("a vim motion (j) is still consumed, proving the harness detects consumption", async () => {
+    const { press } = await setup();
+    expect(press("j")).toBe(true);
+  });
+});

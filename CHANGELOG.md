@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Fixed
+
+- Arrow keys no longer get swallowed in normal and visual mode. They pass through to OpenCode, so you can exit the subagent view (and use other native navigation) without first switching to insert mode ([#63](https://github.com/oribarilan/vimcode/issues/63)).
+
 ## [0.17.0] — 2026-09-02
 
 ### Changed

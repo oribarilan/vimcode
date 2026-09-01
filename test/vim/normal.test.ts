@@ -653,3 +653,17 @@ describe("handleNormalKey — pending cleanup", () => {
     expect(cmds(r.actions)).toEqual(["input.word.forward"]);
   });
 });
+
+// ── handleNormalKey — arrow keys pass through (issue #63) ──
+
+describe("handleNormalKey — arrow keys pass through", () => {
+  // Arrows are host navigation, not vim motions. If vimcode consumes them,
+  // OpenCode can't exit the subagent view from normal mode (issue #63).
+  for (const arrow of ["up", "down", "left", "right"] as const) {
+    it(`${arrow} passes through to the host without consuming`, () => {
+      const r = handleNormalKey(state, arrow, ev(arrow), mockPrompt);
+      expect(r.consume).toBe(false);
+      expect(r.actions).toEqual([]);
+    });
+  }
+});

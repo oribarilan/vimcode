@@ -193,3 +193,21 @@ describe("handleVisualKey — exit and passthrough", () => {
     expect(r.actions).toEqual([]);
   });
 });
+
+// ── handleVisualKey — arrow keys pass through (issue #63) ──
+
+describe("handleVisualKey — arrow keys pass through", () => {
+  beforeEach(() => {
+    state.mode = "visual";
+  });
+
+  // Arrows are host navigation, not selection motions. Consuming them would
+  // trap the user the same way normal mode did before issue #63.
+  for (const arrow of ["up", "down", "left", "right"] as const) {
+    it(`${arrow} passes through to the host without consuming`, () => {
+      const r = handleVisualKey(state, arrow, ev(arrow), mockPrompt);
+      expect(r.consume).toBe(false);
+      expect(r.actions).toEqual([]);
+    });
+  }
+});
