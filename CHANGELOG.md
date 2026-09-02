@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.17.1] — 2026-09-02
+
 ### Fixed
 
 - Arrow keys no longer get swallowed in normal and visual mode. They pass through to OpenCode, so you can exit the subagent view (and use other native navigation) without first switching to insert mode ([#63](https://github.com/oribarilan/vimcode/issues/63)).
@@ -325,7 +327,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.17.1...HEAD
+[0.17.1]: https://github.com/oribarilan/vimcode/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/oribarilan/vimcode/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/oribarilan/vimcode/compare/v0.15.3...v0.16.0
 [0.15.3]: https://github.com/oribarilan/vimcode/compare/v0.15.2...v0.15.3
