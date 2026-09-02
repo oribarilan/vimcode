@@ -9,7 +9,7 @@ export function handleInsertKey(state: VimState, _key: string, ev: KeyEvent, pro
     // unless at position 0 or start of line.
     const offset = prompt.getCursorOffset();
     if (offset > 0 && prompt.getPlainText()[offset - 1] !== "\n") {
-      actions.push({ type: "cursorTo", offset: offset - 1 });
+      actions.push({ type: "cursorLeft" });
     }
     actions.push({ type: "mode", mode: "normal" });
     return { consume: true, actions };

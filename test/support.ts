@@ -8,6 +8,10 @@ export function cursorTos(actions: Action[]): number[] {
   return actions.filter((a): a is Extract<Action, { type: "cursorTo" }> => a.type === "cursorTo").map((a) => a.offset);
 }
 
+export function cursorLefts(actions: Action[]): number {
+  return actions.filter((a) => a.type === "cursorLeft").length;
+}
+
 export function deleteRanges(actions: Action[]): Array<{ start: number; end: number }> {
   return actions
     .filter((a): a is Extract<Action, { type: "deleteRange" }> => a.type === "deleteRange")

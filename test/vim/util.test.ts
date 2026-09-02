@@ -21,6 +21,10 @@ describe("translateKey", () => {
     expect(translateKey(ev("6", { shift: true }))).toBe("^");
   });
 
+  it("shift+- → _", () => {
+    expect(translateKey(ev("-", { shift: true }))).toBe("_");
+  });
+
   it("shift+[ → {", () => {
     expect(translateKey(ev("[", { shift: true }))).toBe("{");
   });

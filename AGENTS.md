@@ -57,31 +57,31 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (408 lines)  Plugin entry: intercept registration, action application
+  index.ts       (430 lines)  Plugin entry: intercept registration, action application
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
-    types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
-    text.ts      (210 lines)  Pure string algorithms: charKind, endOfWord, currentLineRange, wordRange, bracketRange, quoteRange, anyBracketRange, anyQuoteRange
-    tables.ts    (35 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
+    types.ts     (58 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
+    text.ts      (224 lines)  Pure string algorithms: charKind, endOfWord, currentLineRange, firstNonBlankOnLine, wordRange, bracketRange, quoteRange, anyBracketRange, anyQuoteRange
+    tables.ts    (32 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
     textobject.ts (36 lines)  resolveTextObject — object char → inclusive Range seam (iw/aw, quote/bracket pairs, iq/ib)
-    util.ts      (19 lines)   State-agnostic primitives: translateKey, PASS, pushN
+    util.ts      (20 lines)   State-agnostic primitives: translateKey, PASS, pushN
     state.ts     (76 lines)   VimState lifecycle + transitions
     insert.ts    (32 lines)   handleInsertKey
-    normal.ts    (378 lines)  handleNormalKey (+ file-local finishUndoableChange, applyOperatorRange, isInputEmpty)
-    visual.ts    (104 lines)  handleVisualKey
+    normal.ts    (445 lines)  handleNormalKey (+ file-local finishUndoableChange, applyOperatorRange, isInputEmpty, moveToFirstNonBlank)
+    visual.ts    (112 lines)  handleVisualKey
   leader.ts      (73 lines)   Leader key matching: matchesKeyLike, findMatchingLeader, leaderChar
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  support.ts     (33 lines)   Shared assertion helpers + ev()
+  support.ts     (37 lines)   Shared assertion helpers + ev()
   fixtures.ts    (17 lines)   Prompt fixtures: mockPrompt, emptyPrompt
   vim/                        Per-module engine tests mirroring src/vim/:
-    text.test.ts     (385)    endOfWord, charKind, currentLineRange, wordRange, bracketRange, quoteRange, any* units
+    text.test.ts     (408)    endOfWord, charKind, currentLineRange, firstNonBlankOnLine, wordRange, bracketRange, quoteRange, any* units
     state.test.ts    (70)     createVimState, toggleVimMode
-    util.test.ts     (31)     translateKey
-    insert.test.ts   (92)     handleInsertKey
-    normal.test.ts   (823)    handleNormalKey branches
-    visual.test.ts   (287)    handleVisualKey branches
+    util.test.ts     (35)     translateKey
+    insert.test.ts   (108)    handleInsertKey
+    normal.test.ts   (981)    handleNormalKey branches
+    visual.test.ts   (324)    handleVisualKey branches
     textobject.test.ts (64)   resolveTextObject dispatch seam
   integration.test.ts (418)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
@@ -105,7 +105,8 @@ Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they
 - `{ type: "insertText", text: string }` — inserts text at cursor via `editor.insertText()`
 - `{ type: "yankSelection" }` — reads selected text from the focused editor, stores in yank register and clipboard
 - `{ type: "clearSelection" }` — clears the textarea's selection via `editorView.resetSelection()`
-- `{ type: "cursorTo", offset: number }` — sets `editor.cursorOffset` directly
+- `{ type: "cursorTo", offset: number }` — moves the textarea cursor to a buffer offset
+- `{ type: "cursorLeft" }` — moves the textarea cursor left once
 - `{ type: "selectRange", start: number, end: number }` — calls `editor.setSelectionInclusive(start, end)`
 - `{ type: "deleteRange", start: number, end: number }` — deletes text between inclusive offsets via `editBuffer.deleteRange()`. Saves a snapshot for single-step undo (see below).
 - `{ type: "undo" }` — if an undo snapshot exists (from a `deleteRange`), restores the full buffer from it. Otherwise falls back to `dispatchCommand("input.undo")`.
