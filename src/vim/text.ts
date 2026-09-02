@@ -81,3 +81,130 @@ export function wordRange(text: string, offset: number, around: boolean): Range 
   while (leading > 0 && !isLineBreak(text[leading - 1]) && charKind(text[leading - 1]) === "space") leading--;
   return { start: leading, end };
 }
+
+// Inclusive range for a bracket pair text object (i(/a(, i{/a{, ...). Finds
+// the innermost pair enclosing the cursor, depth-aware and across lines. A
+// cursor sitting on either delimiter counts as inside that pair. `around`
+// includes the delimiters; inner excludes them and returns null for an empty
+// pair. Returns null when no pair encloses the cursor. `open` must differ
+// from `close` (use quoteRange for symmetric delimiters).
+export function bracketRange(text: string, offset: number, open: string, close: string, around: boolean): Range | null {
+  const len = text.length;
+  if (len === 0) return null;
+  const pos = Math.min(Math.max(offset, 0), len - 1);
+
+  let openIdx: number;
+  let closeIdx: number;
+  if (text[pos] === open) {
+    openIdx = pos;
+    closeIdx = matchForward(text, pos, open, close);
+  } else if (text[pos] === close) {
+    closeIdx = pos;
+    openIdx = matchBackward(text, pos, open, close);
+  } else {
+    openIdx = enclosingOpen(text, pos, open, close);
+    closeIdx = openIdx === -1 ? -1 : matchForward(text, openIdx, open, close);
+  }
+  if (openIdx === -1 || closeIdx === -1) return null;
+
+  if (around) return { start: openIdx, end: closeIdx };
+  if (closeIdx - openIdx <= 1) return null; // empty pair — nothing inside
+  return { start: openIdx + 1, end: closeIdx - 1 };
+}
+
+// Scan left from an interior offset for the nearest open with no matching
+// close between it and the cursor (the enclosing pair's opening).
+function enclosingOpen(text: string, from: number, open: string, close: string): number {
+  let depth = 0;
+  for (let i = from; i >= 0; i--) {
+    if (text[i] === close) depth++;
+    else if (text[i] === open) {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return -1;
+}
+
+// Scan right from an opening delimiter for its matching close (depth-aware).
+function matchForward(text: string, openIdx: number, open: string, close: string): number {
+  let depth = 0;
+  for (let i = openIdx; i < text.length; i++) {
+    if (text[i] === open) depth++;
+    else if (text[i] === close && --depth === 0) return i;
+  }
+  return -1;
+}
+
+// Scan left from a closing delimiter for its matching open (depth-aware).
+function matchBackward(text: string, closeIdx: number, open: string, close: string): number {
+  let depth = 0;
+  for (let i = closeIdx; i >= 0; i--) {
+    if (text[i] === close) depth++;
+    else if (text[i] === open && --depth === 0) return i;
+  }
+  return -1;
+}
+
+// Inclusive range for a quote text object (i"/a", i'/a', ...). Quotes don't
+// nest, so they pair left-to-right within the cursor's line (never across a
+// newline). Returns the pair enclosing the cursor — a cursor on a quote counts
+// as inside — with `around` including the quotes. Inner returns null for an
+// empty pair; the function returns null when no pair encloses the cursor.
+export function quoteRange(text: string, offset: number, quote: string, around: boolean): Range | null {
+  const len = text.length;
+  if (len === 0) return null;
+  const pos = Math.min(Math.max(offset, 0), len - 1);
+  const lineStart = text.lastIndexOf("\n", pos - 1) + 1;
+  const nextNewline = text.indexOf("\n", pos);
+  const lineEnd = nextNewline === -1 ? len : nextNewline; // exclusive
+
+  const quotes: number[] = [];
+  for (let i = lineStart; i < lineEnd; i++) {
+    if (text[i] === quote) quotes.push(i);
+  }
+
+  for (let p = 0; p + 1 < quotes.length; p += 2) {
+    const openIdx = quotes[p];
+    const closeIdx = quotes[p + 1];
+    if (pos < openIdx || pos > closeIdx) continue;
+    if (around) return { start: openIdx, end: closeIdx };
+    if (closeIdx - openIdx <= 1) return null; // empty pair
+    return { start: openIdx + 1, end: closeIdx - 1 };
+  }
+  return null;
+}
+
+// `iq`/`aq`: the tightest quote pair (of " ' `) enclosing the cursor.
+export function anyQuoteRange(text: string, offset: number, around: boolean): Range | null {
+  let winner: string | null = null;
+  let bestSpan = Infinity;
+  for (const quote of ['"', "'", "`"]) {
+    const span = quoteRange(text, offset, quote, true);
+    if (span && span.end - span.start < bestSpan) {
+      bestSpan = span.end - span.start;
+      winner = quote;
+    }
+  }
+  return winner === null ? null : quoteRange(text, offset, winner, around);
+}
+
+// `ib`/`ab`: the tightest bracket pair (of () {} [], not angle) enclosing the
+// cursor. Diverges from vim, where `ib` is parens only — see README.
+export function anyBracketRange(text: string, offset: number, around: boolean): Range | null {
+  const pairs: Array<[string, string]> = [
+    ["(", ")"],
+    ["{", "}"],
+    ["[", "]"],
+  ];
+  let winner: [string, string] | null = null;
+  let bestSpan = Infinity;
+  for (const [open, close] of pairs) {
+    const span = bracketRange(text, offset, open, close, true);
+    if (span && span.end - span.start < bestSpan) {
+      bestSpan = span.end - span.start;
+      winner = [open, close];
+    }
+  }
+  return winner === null ? null : bracketRange(text, offset, winner[0], winner[1], around);
+}

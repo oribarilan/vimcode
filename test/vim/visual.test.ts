@@ -252,3 +252,36 @@ describe("handleVisualKey — text objects", () => {
     expect(state.pending).toEqual({ kind: "none" });
   });
 });
+
+// ── handleVisualKey — pair text objects ────────────────────
+
+describe("handleVisualKey — pair text objects", () => {
+  const prompt = (text: string, offset: number): PromptAccess => ({
+    ...mockPrompt,
+    getCursorOffset: () => offset,
+    getPlainText: () => text,
+  });
+
+  beforeEach(() => {
+    state.mode = "visual";
+  });
+
+  it('vi" selects inside double quotes', () => {
+    const p = prompt('say "hi"', 6);
+    state.visualAnchor = 6;
+    handleVisualKey(state, "i", ev("i"), p);
+    const r = handleVisualKey(state, '"', ev('"'), p);
+    expect(selectRanges(r.actions)).toEqual([{ start: 5, end: 6 }]);
+    expect(cursorTos(r.actions)).toEqual([6]);
+    expect(state.visualAnchor).toBe(5);
+  });
+
+  it("vib selects inside the nearest bracket", () => {
+    const p = prompt("(abc)", 2);
+    state.visualAnchor = 2;
+    handleVisualKey(state, "i", ev("i"), p);
+    const r = handleVisualKey(state, "b", ev("b"), p);
+    expect(selectRanges(r.actions)).toEqual([{ start: 1, end: 3 }]);
+    expect(cursorTos(r.actions)).toEqual([3]);
+  });
+});

@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Added
 
 - Word text objects `iw` and `aw`, for use with the `d`, `c`, and `y` operators and in visual mode: `diw`, `ciw`, `daw`, `viw`, and so on ([#57](https://github.com/oribarilan/vimcode/issues/57)).
+- Quote and bracket text objects `i"` `i'` `` i` `` `i(` `i{` `i[` `i<` (with `a` variants) for `d`/`c`/`y` and visual mode: `di"`, `ci(`, `vi[`, and so on. `iq`/`ib` match the nearest quote/bracket of any type; `ib` means any bracket, not vim's parens-only `ib`.
 
 ### Fixed
 

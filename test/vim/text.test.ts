@@ -1,6 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { endOfWord } from "../../src/vim";
-import { charKind, currentLineRange, isWhitespace, wordRange } from "../../src/vim/text";
+import {
+  anyBracketRange,
+  anyQuoteRange,
+  bracketRange,
+  charKind,
+  currentLineRange,
+  isWhitespace,
+  quoteRange,
+  wordRange,
+} from "../../src/vim/text";
 
 // ── endOfWord ──────────────────────────────────────────────
 
@@ -221,5 +230,156 @@ describe("wordRange (around)", () => {
   it("stops a whitespace run at a CR (CRLF safety)", () => {
     // "a \r\nb": cursor on the space at index 1; the run must not swallow \r
     expect(wordRange("a \r\nb", 1, false)).toEqual({ start: 1, end: 1 });
+  });
+});
+
+// ── bracketRange ───────────────────────────────────────────
+
+describe("bracketRange", () => {
+  it("inner spans between the delimiters", () => {
+    expect(bracketRange("(abc)", 2, "(", ")", false)).toEqual({ start: 1, end: 3 });
+  });
+
+  it("around includes the delimiters", () => {
+    expect(bracketRange("(abc)", 2, "(", ")", true)).toEqual({ start: 0, end: 4 });
+  });
+
+  it("works with the cursor on the opening delimiter", () => {
+    expect(bracketRange("(abc)", 0, "(", ")", false)).toEqual({ start: 1, end: 3 });
+  });
+
+  it("works with the cursor on the closing delimiter", () => {
+    expect(bracketRange("(abc)", 4, "(", ")", false)).toEqual({ start: 1, end: 3 });
+  });
+
+  it("selects the innermost pair when nested", () => {
+    // ( a ( b ) c ) — cursor on b (index 3) picks the inner pair
+    expect(bracketRange("(a(b)c)", 3, "(", ")", false)).toEqual({ start: 3, end: 3 });
+  });
+
+  it("selects the outer pair when the cursor is outside the inner one", () => {
+    expect(bracketRange("(a(b)c)", 1, "(", ")", false)).toEqual({ start: 1, end: 5 });
+  });
+
+  it("spans multiple lines", () => {
+    // "(\nx\n)" — inner is everything between the parens, newlines included
+    expect(bracketRange("(\nx\n)", 2, "(", ")", false)).toEqual({ start: 1, end: 3 });
+  });
+
+  it("returns null for an empty pair (nothing inside)", () => {
+    expect(bracketRange("()", 0, "(", ")", false)).toBeNull();
+  });
+
+  it("around still selects an empty pair", () => {
+    expect(bracketRange("()", 0, "(", ")", true)).toEqual({ start: 0, end: 1 });
+  });
+
+  it("returns null when there is no enclosing pair", () => {
+    expect(bracketRange("abc", 1, "(", ")", false)).toBeNull();
+  });
+
+  it("returns null when the cursor is outside the pair", () => {
+    expect(bracketRange("(a)b", 3, "(", ")", false)).toBeNull();
+  });
+
+  it("handles curly braces too", () => {
+    expect(bracketRange("x{ y }z", 3, "{", "}", true)).toEqual({ start: 1, end: 5 });
+  });
+});
+
+// ── quoteRange ─────────────────────────────────────────────
+
+describe("quoteRange", () => {
+  it("inner spans between the quotes", () => {
+    // say "hi" ok — cursor on the i (index 6)
+    expect(quoteRange('say "hi" ok', 6, '"', false)).toEqual({ start: 5, end: 6 });
+  });
+
+  it("around includes the quotes", () => {
+    expect(quoteRange('say "hi" ok', 6, '"', true)).toEqual({ start: 4, end: 7 });
+  });
+
+  it("works with the cursor on the opening quote", () => {
+    expect(quoteRange('say "hi"', 4, '"', false)).toEqual({ start: 5, end: 6 });
+  });
+
+  it("works with the cursor on the closing quote", () => {
+    expect(quoteRange('say "hi"', 7, '"', false)).toEqual({ start: 5, end: 6 });
+  });
+
+  it("returns null for an empty pair", () => {
+    expect(quoteRange('a "" b', 2, '"', false)).toBeNull();
+  });
+
+  it("around still selects an empty pair", () => {
+    expect(quoteRange('a "" b', 2, '"', true)).toEqual({ start: 2, end: 3 });
+  });
+
+  it("pairs quotes left-to-right and picks the enclosing pair", () => {
+    // "a" "b" — cursor on b (index 5) selects the second pair
+    expect(quoteRange('"a" "b"', 5, '"', false)).toEqual({ start: 5, end: 5 });
+  });
+
+  it("returns null when the cursor is between two pairs", () => {
+    expect(quoteRange('"a" "b"', 3, '"', false)).toBeNull();
+  });
+
+  it("does not pair quotes across a newline", () => {
+    // "x"\n"y" — cursor on y is enclosed only by the second line's pair
+    expect(quoteRange('"x"\n"y"', 5, '"', false)).toEqual({ start: 5, end: 5 });
+  });
+
+  it("returns null for an unpaired quote", () => {
+    expect(quoteRange('a "b', 3, '"', false)).toBeNull();
+  });
+
+  it("returns null when there are no quotes", () => {
+    expect(quoteRange("abc", 1, '"', false)).toBeNull();
+  });
+});
+
+// ── anyQuoteRange (iq) ─────────────────────────────────────
+
+describe("anyQuoteRange", () => {
+  it("matches whichever quote type is present", () => {
+    expect(anyQuoteRange("say 'hi'", 6, false)).toEqual({ start: 5, end: 6 });
+  });
+
+  it("picks the tightest enclosing quote when types nest", () => {
+    // "a 'b' c" — cursor on b: the single-quote pair is tighter than the double
+    expect(anyQuoteRange("\"a 'b' c\"", 4, false)).toEqual({ start: 4, end: 4 });
+  });
+
+  it("supports around", () => {
+    expect(anyQuoteRange("say 'hi'", 6, true)).toEqual({ start: 4, end: 7 });
+  });
+
+  it("returns null when no quote encloses the cursor", () => {
+    expect(anyQuoteRange("abc", 1, false)).toBeNull();
+  });
+});
+
+// ── anyBracketRange (ib) ───────────────────────────────────
+
+describe("anyBracketRange", () => {
+  it("matches whichever bracket type is present", () => {
+    expect(anyBracketRange("a [x] b", 3, false)).toEqual({ start: 3, end: 3 });
+  });
+
+  it("picks the tightest enclosing bracket when types nest", () => {
+    // ( [x] ) — cursor on x: the square-bracket pair is tighter than the paren
+    expect(anyBracketRange("( [x] )", 3, false)).toEqual({ start: 3, end: 3 });
+  });
+
+  it("supports around", () => {
+    expect(anyBracketRange("( [x] )", 3, true)).toEqual({ start: 2, end: 4 });
+  });
+
+  it("excludes angle brackets (ib is ()/{}/[] only)", () => {
+    expect(anyBracketRange("<x>", 1, false)).toBeNull();
+  });
+
+  it("returns null when no bracket encloses the cursor", () => {
+    expect(anyBracketRange("abc", 1, false)).toBeNull();
   });
 });

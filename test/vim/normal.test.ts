@@ -240,6 +240,67 @@ describe("handleNormalKey — text objects", () => {
   });
 });
 
+// ── handleNormalKey — pair text objects (end-to-end through the handler) ──
+
+describe("handleNormalKey — pair text objects", () => {
+  const prompt = (text: string, offset: number): PromptAccess => ({
+    getLine: (n) => text.split("\n")[n] ?? "",
+    getLineCount: () => text.split("\n").length,
+    getCursorLine: () => 0,
+    getCursorOffset: () => offset,
+    getPlainText: () => text,
+  });
+
+  it('di" deletes inside double quotes', () => {
+    const p = prompt('say "hi"', 6);
+    handleNormalKey(state, "d", ev("d"), p);
+    handleNormalKey(state, "i", ev("i"), p);
+    const r = handleNormalKey(state, '"', ev('"'), p);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 5, end: 6 }]);
+    expect(state.mode).toBe("normal");
+  });
+
+  it("ci( deletes inside parens and enters insert", () => {
+    const p = prompt("(abc)", 2);
+    handleNormalKey(state, "c", ev("c"), p);
+    handleNormalKey(state, "i", ev("i"), p);
+    const r = handleNormalKey(state, "(", ev("("), p);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 1, end: 3 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("da( deletes around parens including the delimiters", () => {
+    const p = prompt("(abc)", 2);
+    handleNormalKey(state, "d", ev("d"), p);
+    handleNormalKey(state, "a", ev("a"), p);
+    const r = handleNormalKey(state, "(", ev("("), p);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+  });
+
+  it("dib deletes inside the nearest bracket of any type", () => {
+    const p = prompt("[x]", 1);
+    handleNormalKey(state, "d", ev("d"), p);
+    handleNormalKey(state, "i", ev("i"), p);
+    const r = handleNormalKey(state, "b", ev("b"), p);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 1, end: 1 }]);
+  });
+
+  it("diq deletes inside the nearest quote of any type", () => {
+    const p = prompt("'hi'", 2);
+    handleNormalKey(state, "d", ev("d"), p);
+    handleNormalKey(state, "i", ev("i"), p);
+    const r = handleNormalKey(state, "q", ev("q"), p);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 1, end: 2 }]);
+  });
+
+  it("db still deletes a word backward — b stays a motion, not an object", () => {
+    const p = prompt("hello world", 6);
+    handleNormalKey(state, "d", ev("d"), p);
+    const r = handleNormalKey(state, "b", ev("b"), p);
+    expect(cmds(r.actions)).toEqual(["input.delete.word.backward"]);
+  });
+});
+
 // ── handleNormalKey — operators ─────────────────────────────
 
 describe("handleNormalKey — operators", () => {

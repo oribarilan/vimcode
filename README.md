@@ -135,15 +135,19 @@ Counts work on both operator and motion: `2dd` deletes 2 lines, `d3w` deletes 3 
 
 ### Text objects
 
-`iw` (inner word) and `aw` (a word) combine with `d`, `c`, `y` and work in visual mode:
+Text objects pair with `d`, `c`, `y` and select in visual mode (`viw`, `vi(`, `vib`, …). `i` takes the inside; `a` takes the delimiters too (for words, the trailing whitespace):
 
-| Combo | Action |
-|-------|--------|
-| `diw` `ciw` `yiw` | Operate on the word under the cursor |
-| `daw` `caw` `yaw` | Same, plus the word's trailing whitespace |
-| `viw` `vaw` | Select the word (inner / around) |
+| Object | Selects |
+|--------|---------|
+| `iw` `aw` | The word under the cursor |
+| `i"` `i'` `` i` `` | Inside the quotes |
+| `i(` `i{` `i[` `i<` | Inside the bracket pair (opener or closer) |
+| `iq` | The nearest quote of any type (`"` `'` `` ` ``) |
+| `ib` | The nearest bracket of any type (`()` `{}` `[]`) |
 
-`iw` covers the run under the cursor — word, punctuation, or whitespace. `aw` also takes the trailing whitespace, or the leading whitespace when there's none. Quote and bracket objects (`di"`, `ci(`) are coming next.
+So `diw`, `ci"`, `da(`, `yi{`, `vib`, `ciq` all work. `iw` covers the run under the cursor — word, punctuation, or whitespace; `aw` also takes the trailing whitespace (or leading, when there's none). Brackets nest and can span lines; quotes pair within the current line.
+
+**`ib` note:** it means "any bracket" — the nearest of `()` `{}` `[]` — not vim's parens-only `ib`. Use `i(` when you specifically want parentheses.
 
 ### Insert entries
 
@@ -197,7 +201,6 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 ## Known gaps
 
 - `Ctrl+v` - block visual mode is not supported
-- `di"`, `ci(`, etc. (quote and bracket text objects) - not yet implemented; word objects `iw`/`aw` now work
 - No persistent mode indicator - the toast fades after about a second. A slot-based indicator needs the host's JSX runtime, which doesn't resolve reliably from git-installed plugins ([#3](https://github.com/oribarilan/vimcode/issues/3)).
 
 Configurable key bindings are next once the core vim coverage stabilizes.

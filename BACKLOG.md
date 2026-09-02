@@ -26,7 +26,7 @@ Ordered by priority within each category.
 
 ## New features
 
-1. **Text objects (`ciw`, `diw`, `yiw`, `ci"`, `di"`, `da(`, etc.).** Feasible now that we have cursor position access. Read `plainText` + `cursorOffset`, compute the object range in pure logic, apply the edit via `setSelection` + `deleteSelectedText` or direct text manipulation. Start with word and quote objects, then add bracket/paren.
+1. ~~**Text objects (`ciw`, `diw`, `yiw`, `ci"`, `di"`, `da(`, etc.).**~~ Done. Word objects (`iw`/`aw`), quote and bracket pairs, and the `iq`/`ib` any-type aliases, all via the pure `resolveTextObject` seam.
 
 2. **Visual-line mode (`V`).** The widget's `getLineInfo()` and `setSelection()` make line-wise selection straightforward. Extend the existing visual mode with a `visual-line` variant.
 
