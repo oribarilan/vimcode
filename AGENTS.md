@@ -60,14 +60,15 @@ src/
   index.ts       (408 lines)  Plugin entry: intercept registration, action application
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
-    types.ts     (50 lines)   Action union, VimState, Mode, Operator, KeyEvent, HandlerResult, PromptAccess
-    text.ts      (36 lines)   Pure string algorithms: isWhitespace, charKind, endOfWord, currentLineRange
+    types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
+    text.ts      (77 lines)   Pure string algorithms: isWhitespace, charKind, endOfWord, currentLineRange, wordRange
     tables.ts    (35 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
+    textobject.ts (16 lines)  resolveTextObject — object char → inclusive Range seam (iw/aw; PR2 adds pairs)
     util.ts      (19 lines)   State-agnostic primitives: translateKey, PASS, pushN
     state.ts     (76 lines)   VimState lifecycle + transitions
     insert.ts    (32 lines)   handleInsertKey
-    normal.ts    (340 lines)  handleNormalKey (+ file-local finishUndoableChange, isInputEmpty)
-    visual.ts    (78 lines)   handleVisualKey
+    normal.ts    (378 lines)  handleNormalKey (+ file-local finishUndoableChange, isInputEmpty)
+    visual.ts    (104 lines)  handleVisualKey
   leader.ts      (73 lines)   Leader key matching: matchesKeyLike, findMatchingLeader, leaderChar
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
@@ -75,12 +76,13 @@ test/
   support.ts     (33 lines)   Shared assertion helpers + ev()
   fixtures.ts    (17 lines)   Prompt fixtures: mockPrompt, emptyPrompt
   vim/                        Per-module engine tests mirroring src/vim/:
-    text.test.ts     (136)    endOfWord + charKind/isWhitespace/currentLineRange units
+    text.test.ts     (216)    endOfWord, charKind/isWhitespace/currentLineRange, wordRange units
     state.test.ts    (70)     createVimState, toggleVimMode
     util.test.ts     (31)     translateKey
     insert.test.ts   (92)     handleInsertKey
-    normal.test.ts   (655)    handleNormalKey branches
-    visual.test.ts   (195)    handleVisualKey branches
+    normal.test.ts   (762)    handleNormalKey branches
+    visual.test.ts   (254)    handleVisualKey branches
+    textobject.test.ts (23)   resolveTextObject dispatch seam
   integration.test.ts (418)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
 ```
@@ -134,6 +136,15 @@ To add a new motion that works with operators:
 1. Add the standalone motion to `MOTIONS`: `{ "yourkey": "input.move.whatever" }`
 2. Add the destructive version to `DELETE_MOTION`: `{ "yourkey": "input.delete.whatever" }`
 3. If the motion needs special handling with operators (like j/k which delete multiple lines), add an explicit branch in the `state.pending.kind === "operator" && key in MOTIONS` section.
+
+### Adding a text object
+
+Text objects (`iw`/`aw`, and the quote/bracket pairs coming next) route through one seam, so the handlers never change:
+
+1. Add the pure range algorithm to `src/vim/text.ts` — e.g. `wordRange`, and for pairs a `pairRange`. It takes `(text, offset, around)` and returns an inclusive `Range` or `null` when there's nothing to select.
+2. Add a `case` to `resolveTextObject` in `src/vim/textobject.ts` mapping the object char to that algorithm. This is the only dispatch point — the "any quote" (`q`) and "any bracket" (`b`) aliases compose over the per-delimiter cases here.
+3. No handler change needed. `normal.ts` (operator + `i`/`a` → textobject pending → `deleteRange`/`yank`/insert) and `visual.ts` (`i`/`a` → textobject pending → `selectRange`) already send every object char through `resolveTextObject`.
+4. Test the range algorithm in `test/vim/text.test.ts` and the dispatch in `test/vim/textobject.test.ts`; add handler branches in `normal.test.ts`/`visual.test.ts` only if the object needs new handling.
 
 ### Known limitations
 

@@ -1,7 +1,8 @@
 import { consumeCount, enterInsert, resetPending } from "./state";
 import { DELETE_MOTION, MOTIONS, SELECT_MOTIONS } from "./tables";
 import { currentLineRange, endOfWord } from "./text";
-import type { Action, HandlerResult, KeyEvent, PromptAccess, VimState } from "./types";
+import { resolveTextObject } from "./textobject";
+import type { Action, HandlerResult, KeyEvent, Operator, PromptAccess, VimState } from "./types";
 import { PASS, pushN } from "./util";
 
 export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prompt: PromptAccess): HandlerResult {
@@ -56,6 +57,19 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   }
 
   if (ev.name === "tab") return PASS;
+
+  // Pending text object: the object char after d/c/y + i/a (diw, caw, ...).
+  // Resolves to an inclusive range and applies the operator. Must run before
+  // the object char is interpreted as a motion (e.g. w).
+  if (state.pending.kind === "textobject") {
+    const { op, around } = state.pending;
+    const range = resolveTextObject(prompt.getPlainText(), prompt.getCursorOffset(), key, around);
+    if (!range) {
+      resetPending(state);
+      return { consume: true, actions: [] };
+    }
+    return applyOperatorRange(state, op, prompt.getPlainText(), range.start, range.end);
+  }
 
   // Everything below is consumed
   const actions: Action[] = [];
@@ -153,6 +167,14 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return { consume: true, actions };
   }
 
+  // Operator + i/a begins a text object (diw, caw, ...). Must precede the
+  // standalone i/a insert entries below — otherwise `di` falls through and
+  // enters insert instead of waiting for the object char (#57).
+  if (state.pending.kind === "operator" && (key === "i" || key === "a")) {
+    state.pending = { kind: "textobject", op: state.pending.op, around: key === "a" };
+    return { consume: true, actions };
+  }
+
   if (key === "D") {
     actions.push({ type: "cmd", cmd: "input.delete.to.line.end" });
     resetPending(state);
@@ -171,17 +193,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     const n = consumeCount(state);
     const offset = prompt.getCursorOffset();
     const target = endOfWord(prompt.getPlainText(), offset, n);
-    if (op === "y") {
-      const text = prompt.getPlainText().slice(offset, target + 1);
-      state.yankRegister = text;
-      actions.push({ type: "yank", text });
-      resetPending(state);
-      return { consume: true, actions };
-    }
-    actions.push({ type: "deleteRange", start: offset, end: target });
-    if (op === "c") enterInsert(state, actions);
-    else resetPending(state);
-    return finishUndoableChange(actions);
+    return applyOperatorRange(state, op, prompt.getPlainText(), offset, target);
   }
 
   // Pending operator + motion
@@ -216,10 +228,7 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
       consumeCount(state);
       const offset = prompt.getCursorOffset();
       const text = prompt.getPlainText();
-      actions.push({ type: "deleteRange", start: offset, end: Math.max(0, text.length - 1) });
-      if (op === "c") enterInsert(state, actions);
-      else resetPending(state);
-      return finishUndoableChange(actions);
+      return applyOperatorRange(state, op, text, offset, Math.max(0, text.length - 1));
     }
 
     const deleteCmd = DELETE_MOTION[key];
@@ -340,6 +349,28 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
 
 function finishUndoableChange(actions: Action[]): HandlerResult {
   return { consume: true, actions: [{ type: "saveUndoSnapshot" }, ...actions] };
+}
+
+// Apply a d/c/y operator to an inclusive [start, end] buffer range: yank
+// copies the slice; delete/change remove it, with change entering insert.
+// Shared by operator+e, operator+G, and the text-object dispatch.
+function applyOperatorRange(
+  state: VimState,
+  op: Operator | undefined,
+  text: string,
+  start: number,
+  end: number,
+): HandlerResult {
+  if (op === "y") {
+    const yanked = text.slice(start, end + 1);
+    state.yankRegister = yanked;
+    resetPending(state);
+    return { consume: true, actions: [{ type: "yank", text: yanked }] };
+  }
+  const actions: Action[] = [{ type: "deleteRange", start, end }];
+  if (op === "c") enterInsert(state, actions);
+  else resetPending(state);
+  return finishUndoableChange(actions);
 }
 
 function isInputEmpty(prompt: PromptAccess): boolean {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { endOfWord } from "../../src/vim";
-import { charKind, currentLineRange, isWhitespace } from "../../src/vim/text";
+import { charKind, currentLineRange, isWhitespace, wordRange } from "../../src/vim/text";
 
 // ── endOfWord ──────────────────────────────────────────────
 
@@ -132,5 +132,94 @@ describe("currentLineRange", () => {
 
   it("clamps an out-of-range offset into the text", () => {
     expect(currentLineRange("hello", 99)).toEqual({ start: 0, end: 4 });
+  });
+});
+
+// ── wordRange (inner) ──────────────────────────────────────
+
+describe("wordRange (inner)", () => {
+  it("from mid-word, spans the whole word", () => {
+    expect(wordRange("hello world", 2, false)).toEqual({ start: 0, end: 4 });
+  });
+
+  it("from the first char, spans the whole word", () => {
+    expect(wordRange("hello world", 0, false)).toEqual({ start: 0, end: 4 });
+  });
+
+  it("from the last char, spans the whole word", () => {
+    expect(wordRange("hello world", 4, false)).toEqual({ start: 0, end: 4 });
+  });
+
+  it("spans the second word", () => {
+    expect(wordRange("hello world", 6, false)).toEqual({ start: 6, end: 10 });
+  });
+
+  it("on a single space, selects just that space", () => {
+    expect(wordRange("hello world", 5, false)).toEqual({ start: 5, end: 5 });
+  });
+
+  it("on whitespace, selects the whole whitespace run", () => {
+    expect(wordRange("a   b", 2, false)).toEqual({ start: 1, end: 3 });
+  });
+
+  it("on punctuation, selects the punctuation char", () => {
+    expect(wordRange("a.b", 1, false)).toEqual({ start: 1, end: 1 });
+  });
+
+  it("on a punctuation run, selects the whole run", () => {
+    expect(wordRange("a...b", 2, false)).toEqual({ start: 1, end: 3 });
+  });
+
+  it("selects a single-char buffer", () => {
+    expect(wordRange("x", 0, false)).toEqual({ start: 0, end: 0 });
+  });
+
+  it("returns null for empty text", () => {
+    expect(wordRange("", 0, false)).toBeNull();
+  });
+
+  it("does not cross a newline", () => {
+    expect(wordRange("ab\ncd", 1, false)).toEqual({ start: 0, end: 1 });
+  });
+
+  it("selects the word after a newline", () => {
+    expect(wordRange("ab\ncd", 3, false)).toEqual({ start: 3, end: 4 });
+  });
+
+  it("returns null when the cursor sits on a newline", () => {
+    expect(wordRange("ab\ncd", 2, false)).toBeNull();
+  });
+
+  it("clamps an out-of-range offset into the text", () => {
+    expect(wordRange("hello", 99, false)).toEqual({ start: 0, end: 4 });
+  });
+});
+
+// ── wordRange (around) ─────────────────────────────────────
+
+describe("wordRange (around)", () => {
+  it("includes trailing whitespace", () => {
+    expect(wordRange("hello world", 2, true)).toEqual({ start: 0, end: 5 });
+  });
+
+  it("includes a whole trailing whitespace run", () => {
+    expect(wordRange("a   b", 0, true)).toEqual({ start: 0, end: 3 });
+  });
+
+  it("includes leading whitespace when there is no trailing whitespace", () => {
+    expect(wordRange("hello world", 8, true)).toEqual({ start: 5, end: 10 });
+  });
+
+  it("on whitespace, includes the following word", () => {
+    expect(wordRange("a   b", 2, true)).toEqual({ start: 1, end: 4 });
+  });
+
+  it("does not extend an around-word onto a CR (CRLF safety)", () => {
+    expect(wordRange("word\r\nnext", 0, true)).toEqual({ start: 0, end: 3 });
+  });
+
+  it("stops a whitespace run at a CR (CRLF safety)", () => {
+    // "a \r\nb": cursor on the space at index 1; the run must not swallow \r
+    expect(wordRange("a \r\nb", 1, false)).toEqual({ start: 1, end: 1 });
   });
 });

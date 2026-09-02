@@ -1,7 +1,14 @@
 export type Mode = "normal" | "insert" | "visual" | "(insert)";
 export type Operator = "d" | "c" | "y";
 
-export type Pending = { kind: "none" } | { kind: "operator"; op: Operator } | { kind: "goto" } | { kind: "replace" };
+export type Range = { start: number; end: number };
+
+export type Pending =
+  | { kind: "none" }
+  | { kind: "operator"; op: Operator }
+  | { kind: "goto" }
+  | { kind: "replace" }
+  | { kind: "textobject"; op?: Operator; around: boolean };
 
 export type Action =
   | { type: "cmd"; cmd: string }

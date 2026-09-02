@@ -211,3 +211,44 @@ describe("handleVisualKey — arrow keys pass through", () => {
     });
   }
 });
+
+// ── handleVisualKey — text objects ─────────────────────────
+
+describe("handleVisualKey — text objects", () => {
+  // cursor sits inside "hello" of "hello world\n..."
+  const wordPrompt: PromptAccess = { ...mockPrompt, getCursorOffset: () => 2 };
+
+  beforeEach(() => {
+    state.mode = "visual";
+    state.visualAnchor = 2;
+  });
+
+  it("i sets a pending inner text object, no op", () => {
+    const r = handleVisualKey(state, "i", ev("i"), wordPrompt);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toEqual([]);
+    expect(state.pending).toEqual({ kind: "textobject", around: false });
+  });
+
+  it("viw selects the inner word and anchors to its start", () => {
+    handleVisualKey(state, "i", ev("i"), wordPrompt);
+    const r = handleVisualKey(state, "w", ev("w"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+    expect(cursorTos(r.actions)).toEqual([4]);
+    expect(state.visualAnchor).toBe(0);
+  });
+
+  it("vaw selects the word and its trailing whitespace", () => {
+    handleVisualKey(state, "a", ev("a"), wordPrompt);
+    const r = handleVisualKey(state, "w", ev("w"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 5 }]);
+    expect(cursorTos(r.actions)).toEqual([5]);
+  });
+
+  it("an unresolved object char cancels without selecting", () => {
+    handleVisualKey(state, "i", ev("i"), wordPrompt);
+    const r = handleVisualKey(state, "z", ev("z"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([]);
+    expect(state.pending).toEqual({ kind: "none" });
+  });
+});

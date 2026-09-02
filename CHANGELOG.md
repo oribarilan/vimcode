@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- Word text objects `iw` and `aw`, for use with the `d`, `c`, and `y` operators and in visual mode: `diw`, `ciw`, `daw`, `viw`, and so on ([#57](https://github.com/oribarilan/vimcode/issues/57)).
+
+### Fixed
+
+- After an operator, `i`/`a` now start a text object instead of switching to insert mode, so `di` and `ci` wait for the object key ([#57](https://github.com/oribarilan/vimcode/issues/57)).
+
 ## [0.17.1] — 2026-09-02
 
 ### Fixed

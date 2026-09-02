@@ -147,6 +147,99 @@ describe("handleNormalKey — e motion", () => {
   });
 });
 
+// ── handleNormalKey — text objects ─────────────────────────
+
+describe("handleNormalKey — text objects", () => {
+  // cursor sits inside "hello"
+  const wordPrompt: PromptAccess = {
+    getLine: (n) => ["hello world"][n] ?? "",
+    getLineCount: () => 1,
+    getCursorLine: () => 0,
+    getCursorOffset: () => 2,
+    getPlainText: () => "hello world",
+  };
+
+  it("d then i sets a pending inner text object, does not enter insert (#57)", () => {
+    handleNormalKey(state, "d", ev("d"), wordPrompt);
+    const r = handleNormalKey(state, "i", ev("i"), wordPrompt);
+    expect(r.consume).toBe(true);
+    expect(r.actions).toEqual([]);
+    expect(state.pending).toEqual({ kind: "textobject", op: "d", around: false });
+    expect(state.mode).toBe("normal");
+  });
+
+  it("d then a sets a pending around text object", () => {
+    handleNormalKey(state, "d", ev("d"), wordPrompt);
+    handleNormalKey(state, "a", ev("a"), wordPrompt);
+    expect(state.pending).toEqual({ kind: "textobject", op: "d", around: true });
+  });
+
+  it("diw deletes the inner word", () => {
+    handleNormalKey(state, "d", ev("d"), wordPrompt);
+    handleNormalKey(state, "i", ev("i"), wordPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), wordPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+    expect(state.mode).toBe("normal");
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
+  });
+
+  it("ciw deletes the inner word and enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), wordPrompt);
+    handleNormalKey(state, "i", ev("i"), wordPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), wordPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 4 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("yiw yanks the inner word", () => {
+    handleNormalKey(state, "y", ev("y"), wordPrompt);
+    handleNormalKey(state, "i", ev("i"), wordPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), wordPrompt);
+    expect(state.yankRegister).toBe("hello");
+    expect(r.actions.some((a) => a.type === "yank" && a.text === "hello")).toBe(true);
+    expect(state.mode).toBe("normal");
+  });
+
+  it("daw deletes the word and its trailing whitespace", () => {
+    handleNormalKey(state, "d", ev("d"), wordPrompt);
+    handleNormalKey(state, "a", ev("a"), wordPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), wordPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 5 }]);
+    expect(state.mode).toBe("normal");
+  });
+
+  it("caw deletes a word and enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), wordPrompt);
+    handleNormalKey(state, "a", ev("a"), wordPrompt);
+    const r = handleNormalKey(state, "w", ev("w"), wordPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 5 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("yaw yanks a word with trailing whitespace", () => {
+    handleNormalKey(state, "y", ev("y"), wordPrompt);
+    handleNormalKey(state, "a", ev("a"), wordPrompt);
+    handleNormalKey(state, "w", ev("w"), wordPrompt);
+    expect(state.yankRegister).toBe("hello ");
+    expect(state.mode).toBe("normal");
+  });
+
+  it("an unresolved object char cancels the operator without editing", () => {
+    handleNormalKey(state, "d", ev("d"), wordPrompt);
+    handleNormalKey(state, "i", ev("i"), wordPrompt);
+    const r = handleNormalKey(state, "z", ev("z"), wordPrompt);
+    expect(deleteRanges(r.actions)).toEqual([]);
+    expect(state.pending).toEqual({ kind: "none" });
+    expect(state.mode).toBe("normal");
+  });
+
+  it("standalone i still enters insert when no operator is pending", () => {
+    const r = handleNormalKey(state, "i", ev("i"), wordPrompt);
+    expect(state.mode).toBe("insert");
+    expect(r.actions.some((a) => a.type === "mode" && a.mode === "insert")).toBe(true);
+  });
+});
+
 // ── handleNormalKey — operators ─────────────────────────────
 
 describe("handleNormalKey — operators", () => {

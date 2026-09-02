@@ -133,6 +133,18 @@ When the input is empty, `j`/`k` scroll through prompt history instead of moving
 
 Counts work on both operator and motion: `2dd` deletes 2 lines, `d3w` deletes 3 words.
 
+### Text objects
+
+`iw` (inner word) and `aw` (a word) combine with `d`, `c`, `y` and work in visual mode:
+
+| Combo | Action |
+|-------|--------|
+| `diw` `ciw` `yiw` | Operate on the word under the cursor |
+| `daw` `caw` `yaw` | Same, plus the word's trailing whitespace |
+| `viw` `vaw` | Select the word (inner / around) |
+
+`iw` covers the run under the cursor — word, punctuation, or whitespace. `aw` also takes the trailing whitespace, or the leading whitespace when there's none. Quote and bracket objects (`di"`, `ci(`) are coming next.
+
 ### Insert entries
 
 | Key | Action |
@@ -185,7 +197,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 ## Known gaps
 
 - `Ctrl+v` - block visual mode is not supported
-- `ciw`, `di"`, etc. (text objects) - not yet implemented
+- `di"`, `ci(`, etc. (quote and bracket text objects) - not yet implemented; word objects `iw`/`aw` now work
 - No persistent mode indicator - the toast fades after about a second. A slot-based indicator needs the host's JSX runtime, which doesn't resolve reliably from git-installed plugins ([#3](https://github.com/oribarilan/vimcode/issues/3)).
 
 Configurable key bindings are next once the core vim coverage stabilizes.

@@ -1,6 +1,7 @@
 import { consumeCount, enterInsert, enterNormal, exitVisual } from "./state";
 import { SELECT_MOTIONS } from "./tables";
 import { endOfWord } from "./text";
+import { resolveTextObject } from "./textobject";
 import type { Action, HandlerResult, KeyEvent, PromptAccess, VimState } from "./types";
 import { PASS, pushN } from "./util";
 
@@ -23,6 +24,21 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
       return { consume: true, actions };
     }
     // Unknown g-combo or escape — fall through to normal visual handling
+  }
+
+  // Pending text object: object char after i/a (viw, vaw, ...). Selects the
+  // resolved range. Must run before the object char is treated as a selection
+  // motion (e.g. w, b).
+  if (state.pending.kind === "textobject") {
+    const around = state.pending.around;
+    state.pending = { kind: "none" };
+    const range = resolveTextObject(prompt.getPlainText(), prompt.getCursorOffset(), key, around);
+    if (range) {
+      state.visualAnchor = range.start;
+      actions.push({ type: "selectRange", start: range.start, end: range.end });
+      actions.push({ type: "cursorTo", offset: range.end });
+    }
+    return { consume: true, actions };
   }
 
   // Count accumulation
@@ -68,6 +84,12 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
   // Motions extend selection
   if (key in SELECT_MOTIONS) {
     pushN(actions, SELECT_MOTIONS[key], consumeCount(state));
+    return { consume: true, actions };
+  }
+
+  // i/a begin a text object (viw, vaw, ...); wait for the object char.
+  if (key === "i" || key === "a") {
+    state.pending = { kind: "textobject", around: key === "a" };
     return { consume: true, actions };
   }
 
