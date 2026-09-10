@@ -47,6 +47,43 @@ describe("handleVisualKey — motions", () => {
     expect(cmds(r.actions)).toEqual(["input.select.line.end"]);
   });
 
+  it("^ extends to the first non-blank character", () => {
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getLine: () => "\t  hello",
+      getPlainText: () => "\t  hello",
+    };
+    const r = handleVisualKey(state, "^", ev("6", { shift: true }), prompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 3 }]);
+    expect(cursorTos(r.actions)).toEqual([3]);
+  });
+
+  it("_ extends to the first non-blank character", () => {
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getLine: () => "\t  hello",
+      getPlainText: () => "\t  hello",
+    };
+    const r = handleVisualKey(state, "_", ev("_"), prompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 3 }]);
+    expect(cursorTos(r.actions)).toEqual([3]);
+  });
+
+  it("4_ extends to the first non-blank character three lines down", () => {
+    const text = "first\n  second\n\t third\n    fourth";
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getCursorOffset: () => 2,
+      getPlainText: () => text,
+      getLineCount: () => 4,
+    };
+    state.visualAnchor = 2;
+    handleVisualKey(state, "4", ev("4"), prompt);
+    const r = handleVisualKey(state, "_", ev("_"), prompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 2, end: text.indexOf("fourth") }]);
+    expect(cursorTos(r.actions)).toEqual([text.indexOf("fourth")]);
+  });
+
   it("3l dispatches input.select.right 3 times", () => {
     handleVisualKey(state, "3", ev("3"));
     const r = handleVisualKey(state, "l", ev("l"));

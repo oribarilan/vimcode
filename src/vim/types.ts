@@ -22,6 +22,7 @@ export type Action =
   | { type: "saveUndoSnapshot" }
   | { type: "undo" }
   | { type: "cursorTo"; offset: number }
+  | { type: "cursorLeft" }
   | { type: "selectRange"; start: number; end: number };
 
 export type HandlerResult = {

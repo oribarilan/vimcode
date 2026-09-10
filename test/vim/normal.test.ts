@@ -49,6 +49,64 @@ describe("handleNormalKey — motions", () => {
     expect(cmds(r.actions)).toEqual(["input.line.home"]);
   });
 
+  it("^ moves to the first non-blank character", () => {
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getLine: () => " \t  hello",
+      getPlainText: () => " \t  hello",
+    };
+    const r = handleNormalKey(state, "^", ev("6", { shift: true }), prompt);
+    expect(cursorTos(r.actions)).toEqual([4]);
+  });
+
+  it("_ moves to the first non-blank character", () => {
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getLine: () => " \t  hello",
+      getPlainText: () => " \t  hello",
+    };
+    const r = handleNormalKey(state, "_", ev("-", { shift: true }), prompt);
+    expect(cursorTos(r.actions)).toEqual([4]);
+  });
+
+  it("^ and _ move past indentation tabs", () => {
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getLine: () => "  \thello",
+      getPlainText: () => "  \thello",
+    };
+
+    expect(cursorTos(handleNormalKey(state, "^", ev("6", { shift: true }), prompt).actions)).toEqual([3]);
+    expect(cursorTos(handleNormalKey(state, "_", ev("-", { shift: true }), prompt).actions)).toEqual([3]);
+  });
+
+  it("4_ moves to the first non-blank character three lines down", () => {
+    const text = "first\n  second\n\t third\n    fourth";
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getPlainText: () => text,
+      getLineCount: () => 4,
+    };
+    handleNormalKey(state, "4", ev("4"), prompt);
+    const r = handleNormalKey(state, "_", ev("-", { shift: true }), prompt);
+    expect(cursorTos(r.actions)).toEqual([text.indexOf("fourth")]);
+  });
+
+  it("^ moves to the first non-blank character on a subsequent line", () => {
+    const text = "first line\n\t  second line";
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getCursorLine: () => 1,
+      getCursorOffset: () => text.indexOf("second") + 3,
+      getPlainText: () => text,
+      getLine: (n) => (n === 0 ? "first line" : "\t  second line"),
+      getLineCount: () => 2,
+    };
+
+    const r = handleNormalKey(state, "^", ev("6", { shift: true }), prompt);
+    expect(cursorTos(r.actions)).toEqual([text.indexOf("second")]);
+  });
+
   it("0 after count > 0 accumulates as digit", () => {
     handleNormalKey(state, "1", ev("1"), mockPrompt);
     handleNormalKey(state, "0", ev("0"), mockPrompt);
@@ -348,6 +406,77 @@ describe("handleNormalKey — operators", () => {
     expect(cmds(r.actions)).toEqual(["input.delete.to.line.start"]);
   });
 
+  it("d^ deletes to the first non-blank character, preserving indentation", () => {
+    const text = "     test1 test2 test3";
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getCursorOffset: () => 17,
+      getPlainText: () => text,
+    };
+    handleNormalKey(state, "d", ev("d"), prompt);
+    const r = handleNormalKey(state, "^", ev("6", { shift: true }), prompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 5, end: 16 }]);
+  });
+
+  it("d_ deletes the current line", () => {
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    const r = handleNormalKey(state, "_", ev("_"), mockPrompt);
+
+    expect(cmds(r.actions)).toEqual(["input.delete.line"]);
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
+  });
+
+  it("d4_ deletes four lines", () => {
+    handleNormalKey(state, "d", ev("d"), mockPrompt);
+    handleNormalKey(state, "4", ev("4"), mockPrompt);
+    const r = handleNormalKey(state, "_", ev("_"), mockPrompt);
+
+    expect(cmds(r.actions)).toEqual([
+      "input.delete.line",
+      "input.delete.line",
+      "input.delete.line",
+      "input.delete.line",
+    ]);
+  });
+
+  it("c_ changes the current line", () => {
+    handleNormalKey(state, "c", ev("c"), mockPrompt);
+    const r = handleNormalKey(state, "_", ev("_"), mockPrompt);
+
+    expect(cmds(r.actions)).toEqual(["input.delete.line"]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("y_ yanks the current line", () => {
+    handleNormalKey(state, "y", ev("y"), mockPrompt);
+    const r = handleNormalKey(state, "_", ev("_"), mockPrompt);
+
+    expect(state.yankRegister).toBe("hello world\n");
+    expect(r.actions).toContainEqual({ type: "yank", text: "hello world\n" });
+  });
+
+  it("y2_ yanks two complete lines", () => {
+    handleNormalKey(state, "y", ev("y"), mockPrompt);
+    handleNormalKey(state, "2", ev("2"), mockPrompt);
+    const r = handleNormalKey(state, "_", ev("_"), mockPrompt);
+
+    expect(state.yankRegister).toBe("hello world\nsecond line\n");
+    expect(r.actions).toContainEqual({ type: "yank", text: "hello world\nsecond line\n" });
+  });
+
+  it("c^ deletes to the first non-blank character and enters insert", () => {
+    const text = "     test1 test2 test3";
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getCursorOffset: () => 17,
+      getPlainText: () => text,
+    };
+    handleNormalKey(state, "c", ev("c"), prompt);
+    const r = handleNormalKey(state, "^", ev("6", { shift: true }), prompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 5, end: 16 }]);
+    expect(state.mode).toBe("insert");
+  });
+
   it("dj dispatches input.delete.line twice", () => {
     handleNormalKey(state, "d", ev("d"), mockPrompt);
     const r = handleNormalKey(state, "j", ev("j"), mockPrompt);
@@ -394,6 +523,19 @@ describe("handleNormalKey — operators", () => {
     const r = handleNormalKey(state, "$", ev("4", { shift: true }), mockPrompt);
     expect(cmds(r.actions)).toEqual(["input.select.line.end"]);
     expect(r.actions.some((a) => a.type === "yankSelection")).toBe(true);
+  });
+
+  it("y^ yanks to the first non-blank character, excluding indentation", () => {
+    const text = "     test1 test2 test3";
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getCursorOffset: () => 17,
+      getPlainText: () => text,
+    };
+    handleNormalKey(state, "y", ev("y"), prompt);
+    const r = handleNormalKey(state, "^", ev("6", { shift: true }), prompt);
+    expect(state.yankRegister).toBe("test1 test2 ");
+    expect(r.actions).toContainEqual({ type: "yank", text: "test1 test2 " });
   });
 
   it("y3w selects 3 words and yanks", () => {
@@ -626,6 +768,22 @@ describe("handleNormalKey — insert entries", () => {
   it("a dispatches input.move.right, enters insert", () => {
     const r = handleNormalKey(state, "a", ev("a"), mockPrompt);
     expect(cmds(r.actions)).toContain("input.move.right");
+    expect(state.mode).toBe("insert");
+  });
+
+  it("I moves to the first non-blank character and enters insert", () => {
+    const prompt: PromptAccess = {
+      ...mockPrompt,
+      getLine: () => " \t  hello",
+    };
+    const r = handleNormalKey(state, "I", ev("i", { shift: true }), prompt);
+    expect(cmds(r.actions)).toEqual([
+      "input.line.home",
+      "input.move.right",
+      "input.move.right",
+      "input.move.right",
+      "input.move.right",
+    ]);
     expect(state.mode).toBe("insert");
   });
 

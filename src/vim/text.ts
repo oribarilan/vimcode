@@ -43,6 +43,20 @@ export function currentLineRange(text: string, offset: number): { start: number;
   return { start, end: newline === -1 ? text.length - 1 : newline };
 }
 
+export function firstNonBlankOnLine(text: string, offset: number, linesDown = 0): number {
+  const safeOffset = Math.min(Math.max(offset, 0), text.length);
+  let start = text.lastIndexOf("\n", safeOffset - 1) + 1;
+  for (let i = 0; i < linesDown; i++) {
+    const newline = text.indexOf("\n", start);
+    if (newline === -1) break;
+    start = newline + 1;
+  }
+  const lineEnd = text.indexOf("\n", start);
+  const line = text.slice(start, lineEnd === -1 ? text.length : lineEnd);
+  const firstNonBlank = line.search(/[^ \t\r]/);
+  return start + Math.max(0, firstNonBlank);
+}
+
 // Inclusive [start, end] offsets for the `iw`/`aw` text object under the
 // cursor. A "word" is a run of one charKind (word/punct/space); runs never
 // cross a newline. `around` extends past a word/punct run to its trailing

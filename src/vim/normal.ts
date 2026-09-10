@@ -1,6 +1,6 @@
 import { consumeCount, enterInsert, resetPending } from "./state";
 import { DELETE_MOTION, MOTIONS, SELECT_MOTIONS } from "./tables";
-import { currentLineRange, endOfWord } from "./text";
+import { currentLineRange, endOfWord, firstNonBlankOnLine } from "./text";
 import { resolveTextObject } from "./textobject";
 import type { Action, HandlerResult, KeyEvent, Operator, PromptAccess, VimState } from "./types";
 import { PASS, pushN } from "./util";
@@ -187,6 +187,52 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return finishUndoableChange(actions);
   }
 
+  // `_` is linewise when used with an operator, like `dd`/`cc`/`yy`.
+  if (state.pending.kind === "operator" && key === "_") {
+    const op = state.pending.op;
+    const n = consumeCount(state);
+
+    if (op === "y") {
+      const cursorLine = prompt.getCursorLine();
+      const lines: string[] = [];
+      for (let i = 0; i < n; i++) lines.push(prompt.getLine(cursorLine + i));
+      const text = `${lines.join("\n")}\n`;
+      state.yankRegister = text;
+      actions.push({ type: "yank", text });
+      resetPending(state);
+      return { consume: true, actions };
+    }
+
+    pushN(actions, "input.delete.line", n);
+    if (op === "c") enterInsert(state, actions);
+    else resetPending(state);
+    return finishUndoableChange(actions);
+  }
+
+  // `^` is an exclusive characterwise motion to the first non-blank character.
+  if (state.pending.kind === "operator" && key === "^") {
+    const op = state.pending.op;
+    consumeCount(state);
+    const text = prompt.getPlainText();
+    const offset = prompt.getCursorOffset();
+    const target = firstNonBlankOnLine(text, offset);
+    const start = Math.min(offset, target);
+    const end = Math.max(offset, target) - 1;
+
+    if (op === "y") {
+      const yanked = text.slice(start, end + 1);
+      state.yankRegister = yanked;
+      actions.push({ type: "yank", text: yanked });
+      resetPending(state);
+      return { consume: true, actions };
+    }
+
+    if (start <= end) actions.push({ type: "deleteRange", start, end });
+    if (op === "c") enterInsert(state, actions);
+    else resetPending(state);
+    return finishUndoableChange(actions);
+  }
+
   // Pending operator + e (end-of-word needs special handling)
   if (state.pending.kind === "operator" && key === "e") {
     const op = state.pending.op;
@@ -249,6 +295,15 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     const n = consumeCount(state);
     const target = endOfWord(prompt.getPlainText(), prompt.getCursorOffset(), n);
     actions.push({ type: "cursorTo", offset: target });
+    return { consume: true, actions };
+  }
+
+  if (key === "^" || key === "_") {
+    const n = consumeCount(state);
+    actions.push({
+      type: "cursorTo",
+      offset: firstNonBlankOnLine(prompt.getPlainText(), prompt.getCursorOffset(), key === "_" ? n - 1 : 0),
+    });
     return { consume: true, actions };
   }
 
@@ -322,6 +377,12 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return { consume: true, actions };
   }
 
+  if (key === "I") {
+    moveToFirstNonBlank(actions, prompt.getLine(prompt.getCursorLine()));
+    enterInsert(state, actions);
+    return { consume: true, actions };
+  }
+
   if (key === "A") {
     actions.push({ type: "cmd", cmd: "input.line.end" });
     enterInsert(state, actions);
@@ -375,4 +436,10 @@ function applyOperatorRange(
 
 function isInputEmpty(prompt: PromptAccess): boolean {
   return prompt.getLineCount() === 1 && prompt.getLine(0) === "";
+}
+
+function moveToFirstNonBlank(actions: Action[], line: string) {
+  actions.push({ type: "cmd", cmd: "input.line.home" });
+  const firstNonBlank = line.search(/[^ \t\r]/);
+  if (firstNonBlank !== -1) pushN(actions, "input.move.right", firstNonBlank);
 }

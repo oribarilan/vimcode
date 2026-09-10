@@ -211,7 +211,29 @@ const plugin: TuiPluginModule = {
           }
           case "cursorTo": {
             const editor = api.renderer?.currentFocusedEditor;
-            if (editor) editor.cursorOffset = action.offset;
+            if (editor?.moveCursorRight) {
+              const text = editor.plainText ?? "";
+              const target = Math.min(Math.max(action.offset, 0), text.length);
+              const lineStart = text.lastIndexOf("\n", target - 1) + 1;
+
+              editor.cursorOffset = lineStart;
+              for (let i = lineStart; i < target; i++) editor.moveCursorRight();
+              editor.getLayoutNode?.().markDirty?.();
+              api.renderer?.requestRender?.();
+            } else if (editor) {
+              editor.cursorOffset = action.offset;
+            }
+            break;
+          }
+          case "cursorLeft": {
+            const editor = api.renderer?.currentFocusedEditor;
+            if (editor?.moveCursorLeft) {
+              editor.moveCursorLeft();
+              editor.getLayoutNode?.().markDirty?.();
+              api.renderer?.requestRender?.();
+            } else if (editor) {
+              editor.cursorOffset = Math.max(0, (editor.cursorOffset ?? 0) - 1);
+            }
             break;
           }
           case "selectRange": {

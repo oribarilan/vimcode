@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { createVimState, handleInsertKey, type PromptAccess, type VimState } from "../../src/vim";
+import { createVimState, handleInsertKey, handleNormalKey, type PromptAccess, type VimState } from "../../src/vim";
 import { mockPrompt } from "../fixtures";
-import { cmds, cursorTos, ev } from "../support";
+import { cmds, cursorLefts, ev } from "../support";
 
 let state: VimState;
 
@@ -57,12 +57,28 @@ describe("handleInsertKey", () => {
     };
     const r = handleInsertKey(state, "escape", ev("escape"), midLinePrompt);
     expect(r.consume).toBe(true);
-    expect(cursorTos(r.actions)).toEqual([4]);
+    expect(cursorLefts(r.actions)).toBe(1);
+  });
+
+  it("I then escape moves left from the textarea cursor", () => {
+    const prompt: PromptAccess = {
+      getLine: () => "       test test test",
+      getLineCount: () => 1,
+      getCursorLine: () => 0,
+      getCursorOffset: () => 7,
+      getPlainText: () => "       test test test",
+    };
+
+    const enterInsert = handleNormalKey(state, "I", ev("i", { shift: true }), prompt);
+    expect(enterInsert.actions).toContainEqual({ type: "mode", mode: "insert" });
+
+    const leaveInsert = handleInsertKey(state, "escape", ev("escape"), prompt);
+    expect(cursorLefts(leaveInsert.actions)).toBe(1);
   });
 
   it("escape at position 0 does not move cursor", () => {
     const r = handleInsertKey(state, "escape", ev("escape"), mockPrompt);
-    expect(cursorTos(r.actions)).toEqual([]);
+    expect(cursorLefts(r.actions)).toBe(0);
   });
 
   it("escape at start of line does not move cursor", () => {
@@ -74,7 +90,7 @@ describe("handleInsertKey", () => {
       getPlainText: () => "hello world\nsecond line",
     };
     const r = handleInsertKey(state, "escape", ev("escape"), startOfLinePrompt);
-    expect(cursorTos(r.actions)).toEqual([]);
+    expect(cursorLefts(r.actions)).toBe(0);
   });
 
   it("ctrl+o enters normal mode with oneShotNormal flag", () => {

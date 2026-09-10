@@ -6,6 +6,7 @@ import {
   bracketRange,
   charKind,
   currentLineRange,
+  firstNonBlankOnLine,
   isWhitespace,
   quoteRange,
   wordRange,
@@ -141,6 +142,28 @@ describe("currentLineRange", () => {
 
   it("clamps an out-of-range offset into the text", () => {
     expect(currentLineRange("hello", 99)).toEqual({ start: 0, end: 4 });
+  });
+});
+
+// ── firstNonBlankOnLine ─────────────────────────────────────
+
+describe("firstNonBlankOnLine", () => {
+  it("skips spaces and tabs", () => {
+    expect(firstNonBlankOnLine(" \t  hello", 0)).toBe(4);
+  });
+
+  it("uses the cursor's current line", () => {
+    const text = "first line\n\t  second line";
+    expect(firstNonBlankOnLine(text, text.indexOf("second") + 3)).toBe(text.indexOf("second"));
+  });
+
+  it("moves down the requested number of lines", () => {
+    const text = "first\n  second\n\t third\n    fourth";
+    expect(firstNonBlankOnLine(text, 0, 3)).toBe(text.indexOf("fourth"));
+  });
+
+  it("returns the line start when the line is blank", () => {
+    expect(firstNonBlankOnLine("  \t\r\nnext", 0)).toBe(0);
   });
 });
 
