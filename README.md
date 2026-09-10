@@ -201,7 +201,7 @@ All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b
 ## Known gaps
 
 - `Ctrl+v` - block visual mode is not supported
-- No persistent mode indicator - the toast fades after about a second. A slot-based indicator needs the host's JSX runtime, which doesn't resolve reliably from git-installed plugins ([#3](https://github.com/oribarilan/vimcode/issues/3)).
+- No persistent mode indicator - the toast fades after about a second. A cache-installed JSX slot still fails to resolve `@opentui/solid/jsx-dev-runtime`; last reproduced on 2026-09-08 with OpenCode 1.18.21. OpenCode 1.18.25 uses the same relevant runtime code and OpenTUI version ([#3](https://github.com/oribarilan/vimcode/issues/3)).
 
 Configurable key bindings are next once the core vim coverage stabilizes.
 

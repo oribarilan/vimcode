@@ -44,7 +44,7 @@ Ordered by priority within each category.
 
 9. **Completion-aware j/k.** When the cursor follows `@` or `/` (autocomplete triggers), normal-mode j/k should navigate the completion popup rather than move the cursor.
 
-10. **Persistent mode indicator.** Replace the fading toast with something persistent. Blocked by the no-external-imports limitation for slot-based UI. Might be possible via `api.renderer.keyInput.processParsedKey()` or another workaround.
+10. **Persistent mode indicator.** Replace the fading toast with something persistent. Still blocked upstream as of 2026-09-08: on OpenCode 1.18.21, a cache-installed `.tsx` slot fails to resolve `@opentui/solid/jsx-dev-runtime`. OpenCode 1.18.25 uses the same relevant runtime code and OpenTUI version. Track details in [#3](https://github.com/oribarilan/vimcode/issues/3).
 
 ## Polish
 
