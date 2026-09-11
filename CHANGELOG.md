@@ -8,9 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-09-11
+
+### Changed
+
+- Updated the documented cache-installed mode indicator limitation with the latest OpenCode and OpenTUI findings ([#3](https://github.com/oribarilan/vimcode/issues/3)).
+
 ### Fixed
 
-- Dismissing or rejecting a question prompt no longer leaves vimcode stuck passing every key through to the editor (block cursor, typing works, Escape dead). vimcode now also listens for `question.rejected`, not just `question.replied` ([#72](https://github.com/oribarilan/vimcode/issues/72)).
+- Fixed Vim keys remaining unresponsive after dismissing or rejecting a question prompt ([#72](https://github.com/oribarilan/vimcode/issues/72)).
 
 ## [0.18.0] — 2026-09-02
 
@@ -342,7 +348,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/oribarilan/vimcode/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/oribarilan/vimcode/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/oribarilan/vimcode/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/oribarilan/vimcode/compare/v0.16.0...v0.17.0
