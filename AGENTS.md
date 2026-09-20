@@ -5,6 +5,7 @@
 vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on it, understand the plugin system:
 
 **References (read these, don't guess):**
+
 - Official plugin docs: https://opencode.ai/docs/plugins/
 - TUI plugin spec: https://github.com/sst/opencode/blob/dev/packages/opencode/specs/tui-plugins.md
 - Plugin types: `@opencode-ai/plugin/tui` exports `TuiPluginModule`, `TuiPluginApi`
@@ -14,6 +15,7 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 `keymap` (register layers, intercepts, dispatch commands), `slots` (register UI into named slots), `ui` (toasts, dialogs), `theme` (colors), `prompt` (read/write prompt text), `state` (session, config), `client` (SDK), `lifecycle` (disposal), `kv` (persistent storage), `route` (custom screens).
 
 **Gotchas we hit during development:**
+
 - TUI plugins go in `tui.json`, not `opencode.json`. The config field is `"plugin"`.
 - The plugin `package.json` needs `exports: { "./tui": "./src/index.ts" }` — the loader checks `./tui`, not `.`.
 - **`key:before` is NOT a valid intercept type.** The keymap only supports `"key"`, `"key:after"`, and `"raw"`. Passing `"key:before"` silently registers a raw terminal sequence handler that crashes on key events.
@@ -30,20 +32,23 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 `api.renderer.currentFocusedEditor` (same object as `currentFocusedRenderable`) exposes the underlying Textarea widget. Not part of the documented plugin API, but stable and available at runtime. The codebase currently uses `plainText`, `cursorOffset`, `visualCursor`, `cursorStyle`, `insertText()`, and `editorView`. The rest of the surface below is available but unused.
 
 **Top-level properties (read/write):**
-- `cursorOffset: number` — absolute cursor position, readable and writable
-- `visualCursor: { visualRow, visualCol, logicalRow, logicalCol, offset }` — full cursor coordinates (read-only in practice)
+
+- `cursorOffset: number` — rendered cursor position, readable and writable; its setter uses display columns, so tabs make it unsuitable for raw buffer offsets
+- `visualCursor: { visualRow, visualCol, logicalRow, logicalCol, offset }` — full cursor coordinates (read-only in practice); `logicalCol` and `offset` use display-width units
 - `cursorStyle: { style: "block" | "line" | "underline" | "default", blinking: boolean }` — set directly, no DECSCUSR escape needed
 - `plainText: string` — buffer content
 - `selectionBg: RGBA`, `selectionFg: RGBA` — custom selection highlight colors
 
 **Top-level methods:**
+
 - `moveCursorLeft/Right/Up/Down()` — direct cursor movement
-- `setSelection(start, end)`, `setSelectionInclusive(start, end)`, `clearSelection()` — selection control
+- `setSelection(start, end)`, `setSelectionInclusive(start, end)`, `clearSelection()` — selection control; range offsets use display-width units
 - `gotoVisualLineEnd()`, `gotoLineEnd()` — line boundary jumps
 - `insertText(text)` — insert at cursor
 
 **editorView methods (lower-level):**
-- `setCursorByOffset(n)` — position cursor by offset
+
+- `setCursorByOffset(n)` — position cursor by a global display-width offset, like `cursorOffset`; translate string offsets before using either
 - `getNextWordBoundary()`, `getPrevWordBoundary()` — word boundary detection (enables proper `e` vs `w`)
 - `getEOL()`, `getVisualSOL()`, `getVisualEOL()` — line boundary info
 - `getLineInfo()`, `getLogicalLineInfo()` — line metadata
@@ -52,43 +57,48 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 - `moveUpVisual()`, `moveDownVisual()` — visual line movement
 - `setSelection()`, `resetSelection()`, `hasSelection()` — selection management
 
+**editBuffer methods:**
+
+- `setCursor(row, col)` — set the cursor without selection handling; row and column use display-width units
+
 This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, and accurate line operations feasible. The current `setTimeout` + `dispatchCommand` approach can be replaced with direct widget manipulation for most operations.
 
 ## Architecture
 
 ```
 src/
-  index.ts       (414 lines)  Plugin entry: intercept registration, action application
+  index.ts       (479 lines)  Plugin entry: intercept registration, action application
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
-    types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
-    text.ts      (210 lines)  Pure string algorithms: charKind, endOfWord, currentLineRange, wordRange, bracketRange, quoteRange, anyBracketRange, anyQuoteRange
-    tables.ts    (35 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
+    types.ts     (59 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
+    text.ts      (224 lines)  Pure string algorithms: charKind, endOfWord, currentLineRange, firstNonBlankOnLine, wordRange, bracketRange, quoteRange, anyBracketRange, anyQuoteRange
+    tables.ts    (32 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
     textobject.ts (36 lines)  resolveTextObject — object char → inclusive Range seam (iw/aw, quote/bracket pairs, iq/ib)
-    util.ts      (19 lines)   State-agnostic primitives: translateKey, PASS, pushN
-    state.ts     (76 lines)   VimState lifecycle + transitions
-    insert.ts    (32 lines)   handleInsertKey
-    normal.ts    (378 lines)  handleNormalKey (+ file-local finishUndoableChange, applyOperatorRange, isInputEmpty)
-    visual.ts    (104 lines)  handleVisualKey
+    util.ts      (20 lines)   State-agnostic primitives: translateKey, PASS, pushN
+    state.ts     (79 lines)   VimState lifecycle + transitions
+    insert.ts    (39 lines)   handleInsertKey
+    normal.ts    (444 lines)  handleNormalKey (+ file-local finishUndoableChange, applyOperatorRange, isInputEmpty)
+    visual.ts    (124 lines)  handleVisualKey
   leader.ts      (73 lines)   Leader key matching: matchesKeyLike, findMatchingLeader, leaderChar
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
 test/
-  support.ts     (33 lines)   Shared assertion helpers + ev()
+  support.ts     (37 lines)   Shared assertion helpers + ev()
   fixtures.ts    (17 lines)   Prompt fixtures: mockPrompt, emptyPrompt
   vim/                        Per-module engine tests mirroring src/vim/:
-    text.test.ts     (385)    endOfWord, charKind, currentLineRange, wordRange, bracketRange, quoteRange, any* units
+    text.test.ts     (412)    endOfWord, charKind, currentLineRange, firstNonBlankOnLine, wordRange, bracketRange, quoteRange, any* units
     state.test.ts    (70)     createVimState, toggleVimMode
-    util.test.ts     (31)     translateKey
-    insert.test.ts   (92)     handleInsertKey
-    normal.test.ts   (823)    handleNormalKey branches
-    visual.test.ts   (287)    handleVisualKey branches
+    util.test.ts     (35)     translateKey
+    insert.test.ts   (108)    handleInsertKey
+    normal.test.ts   (977)    handleNormalKey branches
+    visual.test.ts   (329)    handleVisualKey branches
     textobject.test.ts (64)   resolveTextObject dispatch seam
-  integration.test.ts (579)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
+  integration.test.ts (797)   Full pipeline: cursor positioning, one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
 ```
 
 **Data flow:**
+
 ```
 KeyEvent → translateKey() → handleInsertKey/handleNormalKey/handleVisualKey() → HandlerResult { consume, actions[] }
                                     ↓                                                         ↓
@@ -99,6 +109,7 @@ KeyEvent → translateKey() → handleInsertKey/handleNormalKey/handleVisualKey(
 Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they take state + key + event, mutate state, return actions. They never touch `api`. The only file that calls `api.keymap.dispatchCommand` is `index.ts`. `src/vim/index.ts` is a strict barrel: it re-exports only the public surface (no `export *`, no internal helpers), and sibling modules import each other directly (`./types`, `./state`, …) never through the barrel.
 
 **Action types:**
+
 - `{ type: "cmd", cmd: string }` — dispatched via `setTimeout(() => api.keymap.dispatchCommand(cmd), 0)`
 - `{ type: "mode", mode: Mode }` — updates the SolidJS signal for the indicator
 - `{ type: "toast", message: string }` — shows a notification
@@ -106,7 +117,8 @@ Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they
 - `{ type: "insertText", text: string }` — inserts text at cursor via `editor.insertText()`
 - `{ type: "yankSelection" }` — reads selected text from the focused editor, stores in yank register and clipboard
 - `{ type: "clearSelection" }` — clears the textarea's selection via `editorView.resetSelection()`
-- `{ type: "cursorTo", offset: number }` — sets `editor.cursorOffset` directly
+- `{ type: "cursorTo", offset: number }` — moves the textarea cursor to a buffer offset
+- `{ type: "cursorLeft" }` — moves the textarea cursor left once
 - `{ type: "selectRange", start: number, end: number }` — calls `editor.setSelectionInclusive(start, end)`
 - `{ type: "deleteRange", start: number, end: number }` — deletes text between inclusive offsets via `editBuffer.deleteRange()`. Saves a snapshot for single-step undo (see below).
 - `{ type: "undo" }` — if an undo snapshot exists (from a `deleteRange`), restores the full buffer from it. Otherwise falls back to `dispatchCommand("input.undo")`.
@@ -117,15 +129,23 @@ Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they
 2. Add the key check and return appropriate actions:
    ```ts
    if (key === "yourkey") {
-     return { consume: true, actions: [{ type: "cmd", cmd: "input.some.command" }] }
+     return {
+       consume: true,
+       actions: [{ type: "cmd", cmd: "input.some.command" }],
+     };
    }
    ```
 3. Add a test in the matching `test/vim/*.test.ts` (e.g. `test/vim/normal.test.ts`), importing helpers from `../support` and fixtures from `../fixtures`:
    ```ts
    it("yourkey dispatches some.command", () => {
-     const result = handleNormalKey(state, "yourkey", ev("yourkey"), mockPrompt)
-     expect(cmds(result.actions)).toEqual(["input.some.command"])
-   })
+     const result = handleNormalKey(
+       state,
+       "yourkey",
+       ev("yourkey"),
+       mockPrompt,
+     );
+     expect(cmds(result.actions)).toEqual(["input.some.command"]);
+   });
    ```
 4. Run `bun test`, then `just dev` to verify in OpenCode.
 
@@ -134,6 +154,7 @@ Handlers in `src/vim/` (`insert.ts`, `normal.ts`, `visual.ts`) are pure — they
 Operators (d/c/y) use two tables in `src/vim/tables.ts`: `MOTIONS` maps key → standalone cursor command, `DELETE_MOTION` maps key → destructive command. When an operator is pending and a motion key arrives, `handleNormalKey` (in `src/vim/normal.ts`) looks up `DELETE_MOTION[key]` and dispatches it.
 
 To add a new motion that works with operators:
+
 1. Add the standalone motion to `MOTIONS`: `{ "yourkey": "input.move.whatever" }`
 2. Add the destructive version to `DELETE_MOTION`: `{ "yourkey": "input.delete.whatever" }`
 3. If the motion needs special handling with operators (like j/k which delete multiple lines), add an explicit branch in the `state.pending.kind === "operator" && key in MOTIONS` section.

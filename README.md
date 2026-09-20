@@ -102,7 +102,9 @@ The plugin checks GitHub for new versions once per day on startup. No other netw
 |-----|--------|
 | `h` `j` `k` `l` | Left, down, up, right |
 | `w` `b` `e` | Word forward, backward, end of word |
-| `0` `^` | Line start |
+| `0` | Line start |
+| `^` | First non-blank character |
+| `_` | First non-blank character on the count-th line down (`4_` = `3j^`) |
 | `$` | Line end |
 | `gg` | Buffer start |
 | `G` | Buffer end |
@@ -124,7 +126,8 @@ When the input is empty, `j`/`k` scroll through prompt history instead of moving
 | `de` `ce` `ye` | To end of word |
 | `d$` `c$` `y$` | To end of line |
 | `d0` `c0` `y0` | To start of line |
-| `d^` `c^` `y^` | To start of line |
+| `d^` `c^` `y^` | To first non-blank character |
+| `d_` `c_` `y_` | Operate on whole line(s), like `dd` `cc` `yy` |
 | `dh` `ch` `yh` | Character left |
 | `dl` `cl` `yl` | Character right |
 | `dj` `cj` `yj` | Current + line below |
@@ -155,6 +158,7 @@ So `diw`, `ci"`, `da(`, `yi{`, `vib`, `ciq` all work. `iw` covers the run under 
 |-----|--------|
 | `i` | Insert at cursor |
 | `a` | Insert after cursor |
+| `I` | Insert at first non-blank character |
 | `A` | Insert at end of line |
 | `o` | Open line below |
 | `O` | Open line above |
@@ -173,7 +177,7 @@ Press `v` in normal mode to enter character-wise visual mode. Press `V` to selec
 | `V` | Select current line |
 | `Escape` `v` | Exit visual mode |
 
-All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `0` `$` `G`, with counts.
+All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `0` `^` `_` `$` `G`, with counts.
 
 ### Other
 

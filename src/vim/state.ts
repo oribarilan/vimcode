@@ -20,6 +20,7 @@ export function toggleVimMode(state: VimState): HandlerResult {
     state.pending = { kind: "none" };
     state.count = 0;
     state.oneShotNormal = false;
+    state.insertEntryOffset = undefined;
     return {
       consume: true,
       actions: [
@@ -60,6 +61,7 @@ export function enterInsert(state: VimState, actions: Action[]) {
   resetPending(state);
   state.mode = "insert";
   state.oneShotNormal = false;
+  state.insertEntryOffset = undefined;
   actions.push({ type: "mode", mode: "insert" });
 }
 
@@ -67,6 +69,7 @@ export function enterNormal(state: VimState, actions: Action[]) {
   state.mode = "normal";
   state.count = 0;
   state.oneShotNormal = false;
+  state.insertEntryOffset = undefined;
   actions.push({ type: "mode", mode: "normal" });
 }
 

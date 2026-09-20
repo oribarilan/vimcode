@@ -8,6 +8,7 @@ export function translateKey(ev: KeyEvent): string {
     if (/[a-z]/.test(ev.name)) key = ev.name.toUpperCase();
     else if (ev.name === "4") key = "$";
     else if (ev.name === "6") key = "^";
+    else if (ev.name === "-") key = "_";
     else if (ev.name === "[") key = "{";
     else if (ev.name === "]") key = "}";
   }

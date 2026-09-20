@@ -97,7 +97,7 @@ const plugin: TuiPluginModule = {
       getLine: (n: number) => getInputText().split("\n")[n] ?? "",
       getLineCount: () => getInputText().split("\n").length,
       getCursorLine: () => api.renderer?.currentFocusedEditor?.visualCursor?.logicalRow ?? 0,
-      getCursorOffset: () => api.renderer?.currentFocusedEditor?.cursorOffset ?? 0,
+      getCursorOffset: () => stringOffsetForCursor(api.renderer?.currentFocusedEditor, getInputText()),
       getPlainText: () => getInputText(),
     };
 
@@ -184,8 +184,8 @@ const plugin: TuiPluginModule = {
             const eb = editor?.editBuffer;
             if (eb?.deleteRange) {
               const text = editor.plainText ?? "";
-              const [sl, sc] = offsetToLineCol(text, action.start);
-              const [el, ec] = offsetToLineCol(text, action.end + 1);
+              const [sl, sc] = stringOffsetToLineCol(text, action.start);
+              const [el, ec] = stringOffsetToLineCol(text, action.end + 1);
               eb.deleteRange(sl, sc, el, ec);
             }
             break;
@@ -217,13 +217,36 @@ const plugin: TuiPluginModule = {
           }
           case "cursorTo": {
             const editor = api.renderer?.currentFocusedEditor;
-            if (editor) editor.cursorOffset = action.offset;
+            if (editor) {
+              const text = editor.plainText ?? "";
+              const target = Math.min(Math.max(action.offset, 0), text.length);
+              const [row, col] = stringOffsetToLineCol(text, target);
+              if (editor.editBuffer?.setCursor) editor.editBuffer.setCursor(row, col);
+              else editor.cursorOffset = stringOffsetToDisplayOffset(text, target);
+              editor.getLayoutNode?.().markDirty?.();
+              api.renderer?.requestRender?.();
+            }
+            break;
+          }
+          case "cursorLeft": {
+            const editor = api.renderer?.currentFocusedEditor;
+            if (editor?.moveCursorLeft) {
+              editor.moveCursorLeft();
+              editor.getLayoutNode?.().markDirty?.();
+              api.renderer?.requestRender?.();
+            } else if (editor) {
+              editor.cursorOffset = Math.max(0, (editor.cursorOffset ?? 0) - 1);
+            }
             break;
           }
           case "selectRange": {
             const editor = api.renderer?.currentFocusedEditor;
             if (editor) {
-              editor.setSelectionInclusive?.(action.start, action.end);
+              const text = editor.plainText ?? "";
+              const start = stringOffsetToDisplayOffset(text, Math.min(action.start, action.end));
+              const end = stringOffsetToDisplayOffset(text, Math.max(action.start, action.end) + 1);
+              if (editor.setSelection) editor.setSelection(start, end);
+              else editor.setSelectionInclusive?.(start, end - 1);
             }
             break;
           }
@@ -405,10 +428,52 @@ const plugin: TuiPluginModule = {
   },
 };
 
-function offsetToLineCol(text: string, offset: number): [number, number] {
-  const before = text.substring(0, offset);
-  const lines = before.split("\n");
-  return [lines.length - 1, lines[lines.length - 1].length];
+// OpenTUI offsets and columns count tabs as two display cells. Vim's pure
+// engine uses JavaScript string offsets, so translate only at this boundary.
+function stringOffsetToDisplayOffset(text: string, offset: number): number {
+  const target = Math.min(Math.max(offset, 0), text.length);
+  let displayOffset = 0;
+  for (let i = 0; i < target; i++) displayOffset += text[i] === "\t" ? 2 : 1;
+  return displayOffset;
+}
+
+function stringOffsetToLineCol(text: string, offset: number): [number, number] {
+  const target = Math.min(Math.max(offset, 0), text.length);
+  let row = 0;
+  let col = 0;
+  for (let i = 0; i < target; i++) {
+    if (text[i] === "\n") {
+      row++;
+      col = 0;
+    } else {
+      col += text[i] === "\t" ? 2 : 1;
+    }
+  }
+  return [row, col];
+}
+
+function stringOffsetForCursor(
+  editor: { visualCursor?: { logicalRow?: number; logicalCol?: number }; cursorOffset?: number } | undefined,
+  text: string,
+): number {
+  const cursor = editor?.visualCursor;
+  if (typeof cursor?.logicalRow === "number" && typeof cursor?.logicalCol === "number") {
+    const lineStart = text
+      .split("\n")
+      .slice(0, cursor.logicalRow)
+      .reduce((offset, line) => offset + line.length + 1, 0);
+    return lineStart + stringOffsetForDisplayOffset(text.slice(lineStart), cursor.logicalCol);
+  }
+  return stringOffsetForDisplayOffset(text, editor?.cursorOffset ?? 0);
+}
+
+function stringOffsetForDisplayOffset(text: string, displayOffset: number): number {
+  let display = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (display >= displayOffset) return i;
+    display += text[i] === "\t" ? 2 : 1;
+  }
+  return text.length;
 }
 
 export default plugin;

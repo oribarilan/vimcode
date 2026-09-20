@@ -417,6 +417,224 @@ describe("undo snapshot — deleteRange + u", () => {
   });
 });
 
+// ── direct cursor positioning ───────────────────────────────
+
+describe("direct cursor positioning", () => {
+  async function setup(text: string, cursor: number, displayCursor = cursor) {
+    const plugin = (await import("../src/index")).default;
+    let editorText = text;
+    let editorCursor = cursor;
+    let selection: { start: number; end: number } | undefined;
+    // biome-ignore lint/suspicious/noExplicitAny: test mock
+    let handler: (ctx: any) => void;
+
+    const stringOffsetForDisplayOffset = (value: string, displayOffset: number) => {
+      let display = 0;
+      for (let i = 0; i < value.length; i++) {
+        if (display >= displayOffset) return i;
+        display += value[i] === "\t" ? 2 : 1;
+      }
+      return value.length;
+    };
+    const displayOffsetForStringOffset = (value: string, offset: number) => {
+      let display = 0;
+      for (let i = 0; i < offset; i++) display += value[i] === "\t" ? 2 : 1;
+      return display;
+    };
+    const lineColToOffset = (line: number, col: number) => {
+      const lines = editorText.split("\n");
+      const lineStart = lines.slice(0, line).reduce((offset, current) => offset + current.length + 1, 0);
+      return lineStart + stringOffsetForDisplayOffset(lines[line] ?? "", col);
+    };
+    const deleteSelection = () => {
+      if (!selection) return;
+      editorText = editorText.slice(0, selection.start) + editorText.slice(selection.end + 1);
+      editorCursor = selection.start;
+      selection = undefined;
+    };
+    const editor = {
+      get plainText() {
+        return editorText;
+      },
+      get cursorOffset() {
+        return displayCursor;
+      },
+      set cursorOffset(value: number) {
+        editorCursor = stringOffsetForDisplayOffset(editorText, value);
+        displayCursor = value;
+      },
+      get visualCursor() {
+        const lineStart = editorText.lastIndexOf("\n", editorCursor - 1) + 1;
+        return {
+          logicalRow: editorText.slice(0, editorCursor).split("\n").length - 1,
+          logicalCol: displayOffsetForStringOffset(editorText.slice(lineStart), editorCursor - lineStart),
+          offset: displayOffsetForStringOffset(editorText, editorCursor),
+        };
+      },
+      cursorStyle: { style: "block" as const, blinking: true },
+      moveCursorRight: () => {
+        // This matches the host behavior that made cursorTo skip past a visual selection.
+        editorCursor = selection ? selection.end + 1 : editorCursor + 1;
+      },
+      moveCursorLeft: () => {
+        editorCursor = Math.max(0, editorCursor - 1);
+      },
+      insertText: (input: string) => {
+        editorText = editorText.slice(0, editorCursor) + input + editorText.slice(editorCursor);
+        editorCursor += input.length;
+      },
+      setSelectionInclusive: (start: number, end: number) => {
+        selection = { start, end };
+      },
+      setSelection: (start: number, end: number) => {
+        selection = {
+          start: stringOffsetForDisplayOffset(editorText, start),
+          end: stringOffsetForDisplayOffset(editorText, end) - 1,
+        };
+      },
+      editorView: {
+        setCursorByOffset: (offset: number) => {
+          editorCursor = stringOffsetForDisplayOffset(editorText, offset);
+          displayCursor = offset;
+        },
+        resetSelection: () => {
+          selection = undefined;
+        },
+      },
+      editBuffer: {
+        setCursor: (row: number, col: number) => {
+          editorCursor = lineColToOffset(row, col);
+          displayCursor = displayOffsetForStringOffset(editorText, editorCursor);
+        },
+        deleteRange: (startLine: number, startCol: number, endLine: number, endCol: number) => {
+          const start = lineColToOffset(startLine, startCol);
+          const end = lineColToOffset(endLine, endCol);
+          editorText = editorText.slice(0, start) + editorText.slice(end);
+          editorCursor = start;
+        },
+      },
+      getLayoutNode: () => ({ markDirty: () => {} }),
+    };
+
+    const api = {
+      renderer: {
+        currentFocusedEditor: editor,
+        currentFocusedRenderable: editor,
+        requestRender: () => {},
+      },
+      ui: { toast: () => {}, dialog: { open: false } },
+      keymap: {
+        intercept: (_event: string, callback: typeof handler) => {
+          handler = callback;
+        },
+        dispatchCommand: (command: string) => {
+          if (command === "input.delete") {
+            editorText = editorText.slice(0, editorCursor) + editorText.slice(editorCursor + 1);
+          }
+          if (command === "input.backspace") deleteSelection();
+          // OpenTUI incorrectly moves to the preceding line's end here.
+          if (command === "input.line.home") editorCursor = editorText.lastIndexOf("\n", editorCursor - 1);
+          return { ok: false };
+        },
+      },
+      route: { current: { name: "home", params: {} } },
+      state: { session: { question: () => [], permission: () => [] } },
+      lifecycle: { onDispose: () => {} },
+      kv: {},
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: test mock
+    await plugin.tui(api as any, { startMode: "normal", updateCheck: false } as any, undefined as any);
+
+    const press = (name: string, opts: Record<string, boolean> = {}) => {
+      let consumed = false;
+      handler?.({
+        event: { name, eventType: "press", ...opts },
+        consume: () => {
+          consumed = true;
+        },
+      });
+      if (!consumed && name.length === 1 && !opts.ctrl && !opts.meta && !opts.super) editor.insertText(name);
+    };
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    return { flush, getCursor: () => editorCursor, getText: () => editorText, press };
+  }
+
+  it("ve<Esc>x deletes the word's last character instead of the following space", async () => {
+    const { flush, getText, press } = await setup("hello world", 1);
+
+    press("v");
+    press("e");
+    press("escape");
+    press("x");
+    await flush();
+
+    expect(getText()).toBe("hell world");
+  });
+
+  it("l extends a visual selection instead of restarting it", async () => {
+    const { flush, getText, press } = await setup("test next", 0);
+
+    press("v");
+    press("e");
+    press("l");
+    press("d");
+    await flush();
+
+    expect(getText()).toBe("next");
+  });
+
+  it("I inserts at the current line's first non-blank character", async () => {
+    const { flush, getText, press } = await setup("previous\nnext", "previous\n".length);
+
+    press("i", { shift: true });
+    await flush();
+    press("x");
+
+    expect(getText()).toBe("previous\nxnext");
+  });
+
+  it("I positions after all leading tabs", async () => {
+    const text = "\t\t\tText";
+    const { getText, press } = await setup(text, text.indexOf("Text"));
+
+    press("i", { shift: true });
+    press("x");
+
+    expect(getText()).toBe("\t\t\txText");
+  });
+
+  it("I then escape stays after tabbed indentation", async () => {
+    const text = "\t\t\tTest";
+    const { getCursor, press } = await setup(text, text.indexOf("Test"));
+
+    press("i", { shift: true });
+    press("escape");
+
+    expect(getCursor()).toBe(text.indexOf("Test"));
+  });
+
+  it("d^ preserves tabbed indentation", async () => {
+    const text = "\t  hello world";
+    const { getText, press } = await setup(text, text.indexOf("world"), text.indexOf("world") + 3);
+
+    press("d");
+    press("6", { shift: true });
+
+    expect(getText()).toBe("\t  world");
+  });
+
+  it("gg reaches the initial blank line", async () => {
+    const { getCursor, press } = await setup("\nhello", 3);
+
+    press("g");
+    press("g");
+
+    expect(getCursor()).toBe(0);
+  });
+});
+
 // ── arrow keys pass through the intercept (issue #63) ─────
 
 describe("arrow keys pass through the intercept", () => {
