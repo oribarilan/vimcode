@@ -8,6 +8,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- Experimental OpenCode v2 TUI compatibility POC using a dual v1/v2 entrypoint and a v2 renderer-key interception adapter. Not yet verified as a supported v2 release.
+- Optional installed-package compatibility harness with exact editor-state checks on pinned v1/v2 binaries.
+- `just dev2` launches local source with a pinned OpenCode v2 release and separate `.dev2/` settings/history.
+
+### Fixed
+
+- Visual `h`/`l` now selects through the cursor in both tested hosts, including backward motions and crossing the anchor, without resetting the anchor for subsequent word or line motions.
+
 ## [0.18.1] — 2026-09-11
 
 ### Changed

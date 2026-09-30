@@ -58,7 +58,9 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (414 lines)  Plugin entry: intercept registration, action application
+  index.ts       (450 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
+  editor.ts      (20 lines)   Visual character selection normalization at the host boundary
+  v2.ts          (239 lines)  Experimental v2 TUI facade (host input, commands, state, events)
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
     types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
@@ -84,8 +86,11 @@ test/
     normal.test.ts   (823)    handleNormalKey branches
     visual.test.ts   (287)    handleVisualKey branches
     textobject.test.ts (64)   resolveTextObject dispatch seam
-  integration.test.ts (579)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
+  integration.test.ts (660)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
+  editor.test.ts      (37)   Inclusive ranges without resetting the native selection anchor
+  v2.test.ts         (298)   Experimental v2 facade contract and lifecycle tests
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
+  compat/                    Optional real-host Python driver and test-only TUI fixture (not packaged)
 ```
 
 **Data flow:**
@@ -155,12 +160,15 @@ Text objects (`iw`/`aw`, the quote/bracket pairs, and the `iq`/`ib` aliases) rou
 ## Development
 
 ```bash
-just dev       # Launch OpenCode with the plugin (uses OPENCODE_TUI_CONFIG=dev-tui.json)
+just dev       # Launch v1 with the plugin (uses OPENCODE_TUI_CONFIG=dev-tui.json)
+just dev2      # Launch pinned v2/local source with isolated .dev2/ state
 bun test       # Run characterization tests
 just check     # Lint + tests (used in GitHub Actions)
+just compat-unit  # Pure checks for the optional host harness
+just compat v1 /absolute/opencode 1.18.33 /canonical/empty/output  # Isolated installed-artifact check
 ```
 
-The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin.
+The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin. `just dev2` runs `scripts/dev2.ts` with the tested v2 package (or an explicit binary), loads local source through the root `tui.ts` shim, and isolates on-disk settings/history under `.dev2/`. The shim/launcher are not distributed; package installs still resolve `exports["./tui"]`. The experimental v2 adapter uses a raw renderer key listener because v2's public keymap does not expose intercepts; see `docs/opencode-v2-poc.md` for configuration and `docs/opencode-v2-strategy.md` for tested alternatives and remaining compatibility gaps.
 
 ## Git Workflow
 

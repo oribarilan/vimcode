@@ -4,11 +4,12 @@
 
 ```bash
 just install     # install deps
-just dev         # launch OpenCode with the plugin loaded
+just dev         # launch OpenCode v1 with the plugin loaded
+just dev2        # launch pinned v2 with local source and separate .dev2/ state
 just check       # run lint + tests
 ```
 
-Running `opencode` directly in this directory won't load the plugin. You need `just dev`, which sets `OPENCODE_TUI_CONFIG=dev-tui.json`.
+Running `opencode` directly in this directory won't load the plugin. `just dev` sets `OPENCODE_TUI_CONFIG=dev-tui.json`. `just dev2` uses npm's package runner (`npx`) for OpenCode 2.0.15 and keeps its on-disk settings/history separate under `.dev2/`. To use an existing v2 binary, run `just dev2 /absolute/path/to/opencode-v2` or set `OPENCODE_V2_BIN`. See [the v2 POC notes](docs/opencode-v2-poc.md#local-development).
 
 ## Adding a keybinding
 

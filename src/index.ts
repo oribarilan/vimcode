@@ -1,6 +1,8 @@
-import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+import type { TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { writeClipboard } from "./clipboard";
+import { selectVisualCharacterRange } from "./editor";
 import { findMatchingLeader, type KeyLike, leaderChar } from "./leader";
+import { createV2Facade, type V2Context } from "./v2";
 import { checkForUpdate } from "./version";
 import {
   type Action,
@@ -13,9 +15,9 @@ import {
   translateKey,
 } from "./vim";
 
-const plugin: TuiPluginModule = {
+const plugin = {
   id: "vimcode",
-  tui: async (api, options) => {
+  tui: async (api: TuiPluginApi, options?: Record<string, unknown>) => {
     const state = createVimState();
     const startMode = options?.startMode === "normal" ? "normal" : "insert";
     state.mode = startMode;
@@ -132,9 +134,28 @@ const plugin: TuiPluginModule = {
           undoSnapshots = [];
         }
         switch (action.type) {
-          case "cmd":
-            setTimeout(() => api.keymap.dispatchCommand(action.cmd), 0);
+          case "cmd": {
+            const visualAnchor =
+              state.mode === "visual" && (action.cmd === "input.select.left" || action.cmd === "input.select.right")
+                ? state.visualAnchor
+                : undefined;
+            const visualEditor = visualAnchor === undefined ? undefined : api.renderer?.currentFocusedEditor;
+            setTimeout(() => {
+              const dispatched = api.keymap.dispatchCommand(action.cmd);
+              if (
+                dispatched?.ok &&
+                visualEditor &&
+                visualAnchor !== undefined &&
+                state.mode === "visual" &&
+                state.visualAnchor === visualAnchor &&
+                api.renderer?.currentFocusedEditor === visualEditor &&
+                api.renderer?.currentFocusedRenderable === visualEditor
+              ) {
+                selectVisualCharacterRange(visualEditor, visualAnchor);
+              }
+            }, 0);
             break;
+          }
           case "mode":
             if (modeIndicator === "toast") {
               const label = action.mode === "(insert)" ? action.mode : action.mode.toUpperCase();
@@ -329,6 +350,11 @@ const plugin: TuiPluginModule = {
           }
         }
 
+        // The v2 facade exposes the host mode here. Autocomplete can also
+        // appear while vim is in normal mode; its own layer owns those keys.
+        const hostMode = (api.keymap as typeof api.keymap & { mode?: { current(): string } }).mode?.current();
+        if (hostMode === "autocomplete" && state.mode !== "insert") return;
+
         // Let autocomplete handle Enter/Escape before vim consumes them.
         // dispatchCommand returns { ok } — true when the autocomplete layer
         // is active and handled the command, false when it's hidden/disabled.
@@ -403,7 +429,17 @@ const plugin: TuiPluginModule = {
       { priority: 10_000 },
     );
   },
-};
+  async setup(context: V2Context) {
+    const { api, dispose } = createV2Facade(context);
+    try {
+      await plugin.tui(api, context.options);
+      return dispose;
+    } catch (error) {
+      dispose();
+      throw error;
+    }
+  },
+} satisfies TuiPluginModule & { setup: (context: V2Context) => Promise<() => void> };
 
 function offsetToLineCol(text: string, offset: number): [number, number] {
   const before = text.substring(0, offset);
