@@ -46,6 +46,32 @@ def run_core(ctx):
     send(ctx, "x")
     record(ctx, "visual-cross-anchor-delete", {"text": "ala beta gamma", "offset": 2, "selected": "", "selection": None})
 
+    seed(ctx, "")
+    keys(ctx, "vl")
+    record(ctx, "visual-empty-no-placeholder", {"text": "", "offset": 0, "selected": "", "selection": None})
+    send(ctx, "v")
+    for name, value, offset, motions, selected, start, end, remaining in (
+        ("eof", "ab", 1, "vl", "b", 1, 2, "a"),
+        ("eol", "a\nb", 0, "vl", "a", 0, 1, "\nb"),
+        ("backward-eol", "a\nb", 1, "vh", "a", 0, 1, "\nb"),
+    ):
+        seed(ctx, value, offset)
+        keys(ctx, motions)
+        record(ctx, f"visual-{name}-selection", {"selected": selected, "selection": {"start": start, "end": end}})
+        send(ctx, "x")
+        record(ctx, f"visual-{name}-delete", {"text": remaining, "offset": start, "selected": "", "selection": None})
+    # Controls preserve PR82's wide endpoint behavior. v1 still has inherited
+    # wide deletion differences; these are not a claim of Unicode parity.
+    for name, glyph in (("cjk", "界"), ("emoji", "😀"), ("tab", "\t")):
+        seed(ctx, "a" + glyph + "b")
+        keys(ctx, "vl")
+        end = 3 if ctx["args"].host == "v2" else 2
+        record(ctx, f"wide-{name}-selection-control", {"offset": 1, "selected": "a" + glyph,
+               "selection": {"start": 0, "end": end}})
+        send(ctx, "x")
+        record(ctx, f"wide-{name}-delete-control", {"text": "b" if ctx["args"].host == "v2" else glyph + "b",
+               "offset": 0, "selected": "", "selection": None})
+
     # Native word/vertical endpoint semantics still differ between hosts. The
     # horizontal fix must preserve their original anchor, not change them.
     v2 = ctx["args"].host == "v2"
@@ -96,9 +122,29 @@ def run_core(ctx):
     record(ctx, "tab-inner-word-offset", {"text": "a\t gamma"}, {"text": "ata gamma"})
 
 
+def completed_command(ctx, action, check, seconds=8):
+    # A renderer acknowledgement is not evidence of a completed server write.
+    # Persist every queried response, including the last one on timeout.
+    def query():
+        result = command(ctx, action)
+        ctx["report"].setdefault("completionResponses", {})[action] = result
+        save(ctx)
+        return result
+    return wait_for(query, check, action + " completion", seconds)
+
+
 def run_v2_prompts(ctx):
+    seed(ctx, "alpha beta gamma", 4)
+    send(ctx, "v")
+    old_editor = snapshot(ctx)["editorId"]
     command(ctx, "session")
-    wait_for(lambda: snapshot(ctx), lambda value: value["route"].get("type") == "session", "synthetic session")
+    wait_for(lambda: snapshot(ctx), lambda value: value["route"].get("type") == "session" and
+             value["editorId"] != old_editor, "new synthetic session editor")
+    seed(ctx, "hello", preserve_mode=True)
+    send(ctx, "l")
+    record(ctx, "visual-editor-switch-selection", {"offset": 1, "selected": "he", "selection": {"start": 0, "end": 2}})
+    send(ctx, "x")
+    record(ctx, "visual-editor-switch-delete", {"text": "llo", "offset": 0, "selected": "", "selection": None})
     command(ctx, "form")
     wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "root form")
     for ch in "hello world":
@@ -106,9 +152,8 @@ def run_v2_prompts(ctx):
     record(ctx, "root-form-space", {"text": "hello world", "mode": "form"})
     send(ctx, "Enter", False)
     send(ctx, "Enter", False)
-    result = command(ctx, "formState")
-    if result["state"] != {"status": "answered", "answer": {"answer": "hello world"}}:
-        raise AssertionError(result)
+    completed_command(ctx, "formState", lambda result:
+                      result.get("state") == {"status": "answered", "answer": {"answer": "hello world"}})
     command(ctx, "childForm")
     wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "child form")
     for ch in "child words":
@@ -116,9 +161,8 @@ def run_v2_prompts(ctx):
     record(ctx, "child-form-space", {"text": "child words", "mode": "form"})
     send(ctx, "Enter", False)
     send(ctx, "Enter", False)
-    result = command(ctx, "formState")
-    if result["state"] != {"status": "answered", "answer": {"answer": "child words"}}:
-        raise AssertionError(result)
+    completed_command(ctx, "formState", lambda result:
+                      result.get("state") == {"status": "answered", "answer": {"answer": "child words"}})
     command(ctx, "permission")
     wait_for(lambda: capture(ctx), lambda pane: "Permission required" in pane, "pending permission")
     send(ctx, "Escape", False)
@@ -128,8 +172,7 @@ def run_v2_prompts(ctx):
         send(ctx, ch)
     record(ctx, "child-permission-message", {"text": "no thanks"})
     send(ctx, "Enter", False)
-    if command(ctx, "permissions") != []:
-        raise AssertionError("Pending permission was not rejected")
+    completed_command(ctx, "permissions", lambda result: result == [])
 
 
 def run_v2_reload(ctx):

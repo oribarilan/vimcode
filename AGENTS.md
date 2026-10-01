@@ -58,9 +58,9 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (450 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
-  editor.ts      (20 lines)   Visual character selection normalization at the host boundary
-  v2.ts          (239 lines)  Experimental v2 TUI facade (host input, commands, state, events)
+  index.ts       (474 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
+  editor.ts      (30 lines)   Host-coordinate horizontal selection bounds, preserving native anchor
+  v2.ts          (243 lines)  Experimental v2 TUI facade (host input, commands, state, events)
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
     types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
@@ -86,9 +86,9 @@ test/
     normal.test.ts   (823)    handleNormalKey branches
     visual.test.ts   (287)    handleVisualKey branches
     textobject.test.ts (64)   resolveTextObject dispatch seam
-  integration.test.ts (660)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
-  editor.test.ts      (37)   Inclusive ranges without resetting the native selection anchor
-  v2.test.ts         (298)   Experimental v2 facade contract and lifecycle tests
+  integration.test.ts (662)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
+  editor.test.ts      (90)   Host-coordinate boundaries without resetting the native selection anchor
+  v2.test.ts         (369)   Experimental v2 facade contract and lifecycle tests
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
   compat/                    Optional real-host Python driver and test-only TUI fixture (not packaged)
 ```
@@ -168,7 +168,9 @@ just compat-unit  # Pure checks for the optional host harness
 just compat v1 /absolute/opencode 1.18.33 /canonical/empty/output  # Isolated installed-artifact check
 ```
 
-The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin. `just dev2` runs `scripts/dev2.ts` with the tested v2 package (or an explicit binary), loads local source through the root `tui.ts` shim, and isolates on-disk settings/history under `.dev2/`. The shim/launcher are not distributed; package installs still resolve `exports["./tui"]`. The experimental v2 adapter uses a raw renderer key listener because v2's public keymap does not expose intercepts; see `docs/opencode-v2-poc.md` for configuration and `docs/opencode-v2-strategy.md` for tested alternatives and remaining compatibility gaps.
+The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin. `just dev2` runs `scripts/dev2.ts` with the tested v2 package (or an explicit binary), loads local source through the root `tui.ts` shim, and isolates on-disk settings/history under `.dev2/`. The shim/launcher are not distributed; package installs still resolve `exports["./tui"]`. Visual mode captures the focused editor on entry and re-anchors at the new editor's cursor on the next eligible key after a prompt switch; overlay keys do not change ownership. Horizontal normalization probes `editBuffer.getTextRange()` in host display-cell coordinates and uses lower `editorView` selection calls to retain the renderer's native anchor. The v2 disabled setting is per activation: external storage reconciliation applies on reload, while local `/vim` updates both controller and form guard immediately. `just compat-unit` runs in CI; live-host checks remain optional.
+
+The experimental v2 adapter uses a raw renderer key listener because v2's public keymap does not expose intercepts; see `docs/opencode-v2-poc.md` for configuration and `docs/opencode-v2-strategy.md` for tested alternatives and remaining compatibility gaps.
 
 ## Git Workflow
 

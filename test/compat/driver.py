@@ -87,7 +87,7 @@ def new_context(args, output, tarball):
 
 
 def tmux(ctx, *parts):
-    command = ["tmux", "-L", ctx["socket"], *parts]
+    command = ["tmux", "-L", ctx["socket"], "-f", "/dev/null", *parts]
     return subprocess.run(command, text=True, capture_output=True, check=True, timeout=8).stdout
 
 
@@ -270,8 +270,9 @@ def normal(ctx):
              value.get("cursorStyle", {}).get("style") == "block", "Vim normal cursor", 3)
 
 
-def seed(ctx, text, offset=0):
-    normal(ctx)
+def seed(ctx, text, offset=0, preserve_mode=False):
+    if not preserve_mode:
+        normal(ctx)
     uid = uuid.uuid4().hex
     atomic_json(ctx["request"], {"action": "seed", "id": uid, "text": text, "offset": offset})
     state = wait_for(lambda: snapshot(ctx), lambda value: value.get("applied") == uid, "seeded editor", 5)

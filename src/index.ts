@@ -94,6 +94,12 @@ const plugin = {
     // The host editor's undo system splits repeated commands into multiple
     // entries, so we save/restore the buffer ourselves.
     let undoSnapshots: Array<{ text: string; cursor: number }> = [];
+    let visualEditorOwner: unknown;
+    let disposed = false;
+    api.lifecycle?.onDispose?.(() => {
+      disposed = true;
+      visualEditorOwner = undefined;
+    });
 
     const prompt = {
       getLine: (n: number) => getInputText().split("\n")[n] ?? "",
@@ -141,6 +147,14 @@ const plugin = {
                 : undefined;
             const visualEditor = visualAnchor === undefined ? undefined : api.renderer?.currentFocusedEditor;
             setTimeout(() => {
+              if (
+                disposed ||
+                (visualEditor &&
+                  (api.ui?.dialog?.open ||
+                    api.renderer?.currentFocusedEditor !== visualEditor ||
+                    api.renderer?.currentFocusedRenderable !== visualEditor))
+              )
+                return;
               const dispatched = api.keymap.dispatchCommand(action.cmd);
               if (
                 dispatched?.ok &&
@@ -148,6 +162,8 @@ const plugin = {
                 visualAnchor !== undefined &&
                 state.mode === "visual" &&
                 state.visualAnchor === visualAnchor &&
+                visualEditorOwner === visualEditor &&
+                !api.ui?.dialog?.open &&
                 api.renderer?.currentFocusedEditor === visualEditor &&
                 api.renderer?.currentFocusedRenderable === visualEditor
               ) {
@@ -157,6 +173,7 @@ const plugin = {
             break;
           }
           case "mode":
+            visualEditorOwner = action.mode === "visual" ? api.renderer?.currentFocusedEditor : undefined;
             if (modeIndicator === "toast") {
               const label = action.mode === "(insert)" ? action.mode : action.mode.toUpperCase();
               api.ui?.toast?.({
@@ -394,6 +411,13 @@ const plugin = {
           }
         }
 
+        // Visual mode follows the active prompt, never an old editor's offset.
+        // Capture ownership on entry, then re-anchor only after overlay guards.
+        const editor = api.renderer?.currentFocusedEditor;
+        if (state.mode === "visual" && editor && editor !== visualEditorOwner) {
+          visualEditorOwner = editor;
+          state.visualAnchor = editor.cursorOffset;
+        }
         const handlerMode = state.mode;
         const result =
           state.mode === "insert"

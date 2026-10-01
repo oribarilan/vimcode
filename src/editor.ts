@@ -4,7 +4,11 @@ type VisualSelectionEditor = {
   cursorOffset: number;
   selectionBg?: RGBA;
   selectionFg?: RGBA;
-  editorView?: { setSelection(start: number, end: number, bg?: RGBA, fg?: RGBA): void };
+  editBuffer?: { getTextRange(start: number, end: number): string };
+  editorView?: {
+    setSelection(start: number, end: number, bg?: RGBA, fg?: RGBA): void;
+    resetSelection(): void;
+  };
   requestRender?: () => void;
 };
 
@@ -12,9 +16,15 @@ type VisualSelectionEditor = {
 // The top-level setSelection() clears it, so a following word/line motion
 // would restart selection at the current cursor instead of the Vim anchor.
 export function selectVisualCharacterRange(editor: VisualSelectionEditor, anchor: number): void {
-  if (!editor.editorView?.setSelection) return;
+  if (!editor.editorView?.setSelection || !editor.editBuffer?.getTextRange) return;
   const start = Math.min(anchor, editor.cursorOffset);
-  const end = Math.max(anchor, editor.cursorOffset) + 1;
-  editor.editorView.setSelection(start, end, editor.selectionBg, editor.selectionFg);
+  const last = Math.max(anchor, editor.cursorOffset);
+  // Offsets are host display cells, not JavaScript string indices. A host
+  // range probe distinguishes a character from EOF/EOL without truncating
+  // wide characters or selecting a newline when moving onto a line boundary.
+  const character = editor.editBuffer.getTextRange(last, last + 1);
+  const end = character && character !== "\n" ? last + 1 : last;
+  if (start === end) editor.editorView.resetSelection();
+  else editor.editorView.setSelection(start, end, editor.selectionBg, editor.selectionFg);
   editor.requestRender?.();
 }

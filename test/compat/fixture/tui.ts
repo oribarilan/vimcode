@@ -9,7 +9,7 @@ type Editor = {
   getSelection?: () => { start: number; end: number } | null;
   clearSelection?: () => boolean;
   setText?: (text: string) => void;
-  editBuffer?: { setText: (text: string) => void };
+  editBuffer?: { setText: (text: string) => void; getTextRange?: (start: number, end: number) => string };
   editorView?: {
     getSelection?: () => { start: number; end: number } | null;
     getSelectedText?: () => string;
@@ -156,6 +156,7 @@ function observe(
       afterSeed,
       text: editor?.plainText ?? null,
       offset: editor?.cursorOffset ?? null,
+      nextCell: editor?.editBuffer?.getTextRange?.(editor.cursorOffset, editor.cursorOffset + 1) ?? null,
       cursor: cursor ? { logicalRow: cursor.logicalRow, logicalCol: cursor.logicalCol, offset: cursor.offset } : null,
       selection: editor?.getSelection?.() ?? editor?.editorView?.getSelection?.() ?? null,
       selected: editor?.editorView?.getSelectedText?.() ?? null,

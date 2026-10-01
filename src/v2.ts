@@ -88,6 +88,9 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
   const [settings, updateSettings] = context.storage.store<V2Settings>("settings", {
     initial: { disabled: false, lastUpdateCheck: "" },
   });
+  // Match the shared controller's per-activation snapshot. Other TUI writes
+  // take effect on reload; only this activation's /vim toggle changes it now.
+  let effectiveDisabled = settings.disabled;
   const config = context.options.experimentalV2Leader;
   const leader =
     config === undefined
@@ -154,7 +157,7 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
           if (!editor || editor !== context.renderer.currentFocusedRenderable) return;
           // v2's leader token also matches inside textual forms. Insert its
           // character without running Vim commands against the form's input.
-          if (mode === "form" && !settings.disabled) {
+          if (mode === "form" && !effectiveDisabled) {
             const leader = findMatchingLeader(event, leaders);
             const character = leader && leaderChar(leader);
             if (character && editor.insertText) {
@@ -218,12 +221,13 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
     kv: {
       get: async (key: string) =>
         key === "vimcode.disabled"
-          ? settings.disabled
+          ? effectiveDisabled
           : key === "lastUpdateCheck"
             ? settings.lastUpdateCheck
             : undefined,
       set: async (key: string, value: unknown) => {
         if (disposed) return;
+        if (key === "vimcode.disabled") effectiveDisabled = value === true;
         await updateSettings((draft) => {
           if (key === "vimcode.disabled") draft.disabled = value === true;
           if (key === "lastUpdateCheck") draft.lastUpdateCheck = String(value);

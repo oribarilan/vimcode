@@ -11,12 +11,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Added
 
 - Experimental OpenCode v2 TUI compatibility POC using a dual v1/v2 entrypoint and a v2 renderer-key interception adapter. Not yet verified as a supported v2 release.
-- Optional installed-package compatibility harness with exact editor-state checks on pinned v1/v2 binaries.
+- Optional installed-package compatibility harness with exact editor-state checks on pinned v1/v2 binaries; lightweight harness regressions run in CI without downloading hosts.
 - `just dev2` launches local source with a pinned OpenCode v2 release and separate `.dev2/` settings/history.
 
 ### Fixed
 
-- Visual `h`/`l` now selects through the cursor in both tested hosts, including backward motions and crossing the anchor, without resetting the anchor for subsequent word or line motions.
+- Visual `h`/`l` now selects through the cursor in both tested hosts, including backward motions, empty buffers and EOF/EOL boundaries, without resetting the native anchor for subsequent word or line motions. Visual mode re-anchors at the new prompt's cursor when the focused editor changes.
+- The v2 form leader guard and Vim controller now share a per-activation disabled setting; external TUI toggles take effect on reload, local `/vim` toggles take effect immediately.
+- Compatibility checks ignore user tmux configuration and poll boundedly for asynchronous form/permission completion, retaining the last server response in receipts.
 
 ## [0.18.1] — 2026-09-11
 

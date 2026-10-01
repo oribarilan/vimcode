@@ -25,7 +25,14 @@ function host(options: Record<string, unknown> = {}, saved = { disabled: false, 
   let focused = true;
   let slotRender: (() => null) | undefined;
   let removedSlot = false;
+  const selections: Array<[number, number]> = [];
   const editor = {
+    editBuffer: { getTextRange: () => "l" },
+    editorView: {
+      resetSelection: () => {},
+      setSelection: (start: number, end: number) => selections.push([start, end]),
+    },
+    setSelectionInclusive: (start: number, end: number) => selections.push([start, end + 1]),
     plainText: "hello",
     cursorOffset: 2,
     visualCursor: { logicalRow: 0 },
@@ -37,7 +44,7 @@ function host(options: Record<string, unknown> = {}, saved = { disabled: false, 
   const renderer = {
     currentFocusedEditor: editor,
     get currentFocusedRenderable() {
-      return focused ? editor : undefined;
+      return focused ? renderer.currentFocusedEditor : undefined;
     },
     keyInput: {
       prependListener(_name: "keypress", listener: (event: RawPressEvent) => void) {
@@ -56,6 +63,9 @@ function host(options: Record<string, unknown> = {}, saved = { disabled: false, 
       mode: { current: () => mode },
       dispatch: (id) => {
         dispatched.push(id);
+        const current = renderer.currentFocusedEditor;
+        if (id === "input.select.right") current.cursorOffset++;
+        if (id === "input.select.left") current.cursorOffset = Math.max(0, current.cursorOffset - 1);
       },
       layer: (input) => {
         commands.push(...input().commands);
@@ -128,6 +138,10 @@ function host(options: Record<string, unknown> = {}, saved = { disabled: false, 
     press,
     emit,
     editor,
+    selections,
+    setEditor: (value: typeof editor) => {
+      renderer.currentFocusedEditor = value;
+    },
     commands,
     dispatched,
     toasts,
@@ -220,6 +234,63 @@ describe("OpenCode v2 POC facade", () => {
     await start(disabled);
     disabled.setMode("form");
     expect(disabled.press("space").stopped).toBe(false);
+  });
+
+  for (const initial of [false, true]) {
+    it(`keeps controller and form disabled policy local after saved ${initial} -> ${!initial} reconciliation`, async () => {
+      const mock = host(
+        { updateCheck: false, startMode: "normal", experimentalV2Leader: "space" },
+        { disabled: initial, lastUpdateCheck: "" },
+      );
+      await start(mock);
+      mock.saved.disabled = !initial; // Another TUI reconciles the live store.
+      expect(mock.press("z").stopped).toBe(!initial);
+      mock.setMode("form");
+      expect(mock.press("space").stopped).toBe(!initial);
+      await mock.commands.find((command) => command.id === "vimcode.vim")?.run();
+      expect(mock.saved.disabled).toBe(!initial);
+      expect(mock.press("space").stopped).toBe(initial);
+      mock.setMode("base");
+      expect(mock.press("z").stopped).toBe(initial);
+    });
+  }
+
+  it("re-anchors visual on a different editor before its first motion, counts and text objects", async () => {
+    const mock = host({ updateCheck: false, startMode: "normal" });
+    await start(mock);
+    mock.editor.cursorOffset = 4;
+    mock.press("v"); // Ownership must be captured here, before any motion.
+    const second = { ...mock.editor, cursorOffset: 0 };
+    mock.setEditor(second);
+    mock.press("l");
+    await Bun.sleep(20);
+    expect(mock.selections).toEqual([[0, 2]]);
+    expect(mock.editor.cursorOffset).toBe(4);
+    mock.press("2");
+    mock.press("l");
+    await Bun.sleep(20);
+    expect(mock.selections.at(-1)).toEqual([0, 4]);
+    mock.press("h");
+    await Bun.sleep(20);
+    expect(mock.selections.at(-1)).toEqual([0, 3]);
+    mock.press("i");
+    mock.press("w");
+    expect(mock.selections.at(-1)).toEqual([0, 5]);
+  });
+
+  it("does not normalize or dispatch a queued visual motion after focus loss, overlay or disposal", async () => {
+    for (const change of ["editor", "overlay", "dispose"]) {
+      const mock = host({ updateCheck: false, startMode: "normal" });
+      const dispose = await start(mock);
+      mock.press("v");
+      mock.press("l");
+      if (change === "editor") mock.setEditor({ ...mock.editor, cursorOffset: 0 });
+      if (change === "overlay") mock.setMode("form");
+      if (change === "dispose") dispose();
+      await Bun.sleep(20);
+      expect(mock.selections).toEqual([]);
+      expect(mock.dispatched).not.toContain("input.select.right");
+    }
   });
 
   it("uses host autocomplete state for Enter/Escape in insert mode without intercepting typed keys", async () => {

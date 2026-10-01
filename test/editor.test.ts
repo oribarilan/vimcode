@@ -1,32 +1,85 @@
 import { describe, expect, it } from "bun:test";
 import { selectVisualCharacterRange } from "../src/editor";
 
+function editor(cursorOffset: number, character = "c") {
+  const calls: number[][] = [];
+  const probes: number[][] = [];
+  let renders = 0;
+  let resets = 0;
+  let clearedAnchor = false;
+  return {
+    cursorOffset,
+    calls,
+    probes,
+    get renders() {
+      return renders;
+    },
+    get resets() {
+      return resets;
+    },
+    get clearedAnchor() {
+      return clearedAnchor;
+    },
+    setSelection() {
+      clearedAnchor = true;
+    },
+    editBuffer: {
+      getTextRange: (start: number, end: number) => {
+        probes.push([start, end]);
+        return character;
+      },
+    },
+    editorView: {
+      setSelection: (start: number, end: number) => calls.push([start, end]),
+      resetSelection: () => resets++,
+    },
+    requestRender: () => renders++,
+  };
+}
+
 describe("selectVisualCharacterRange", () => {
   it("includes the cursor without clearing the renderer's native selection anchor", () => {
-    const calls: number[][] = [];
-    let renders = 0;
-    let clearedAnchor = false;
-    const editor = {
-      cursorOffset: 2,
-      setSelection() {
-        clearedAnchor = true;
-      },
-      editorView: { setSelection: (start: number, end: number) => calls.push([start, end]) },
-      requestRender: () => renders++,
-    };
-    selectVisualCharacterRange(editor, 0);
-    expect(calls).toEqual([[0, 3]]);
-    expect(clearedAnchor).toBe(false);
-    expect(renders).toBe(1);
+    const mock = editor(2);
+    selectVisualCharacterRange(mock, 0);
+    expect(mock.calls).toEqual([[0, 3]]);
+    expect(mock.probes).toEqual([[2, 3]]);
+    expect(mock.clearedAnchor).toBe(false);
+    expect(mock.renders).toBe(1);
   });
 
   it("keeps the original anchor when moving backward", () => {
-    const calls: number[][] = [];
-    selectVisualCharacterRange(
-      { cursorOffset: 2, editorView: { setSelection: (start, end) => calls.push([start, end]) } },
-      4,
-    );
-    expect(calls).toEqual([[2, 5]]);
+    const mock = editor(2);
+    selectVisualCharacterRange(mock, 4);
+    expect(mock.calls).toEqual([[2, 5]]);
+  });
+
+  for (const character of ["", "\n"]) {
+    it(`does not expand across ${character ? "EOL" : "EOF"}, including backward selection`, () => {
+      for (const [cursor, anchor] of [
+        [2, 1],
+        [1, 2],
+      ]) {
+        const mock = editor(cursor, character);
+        selectVisualCharacterRange(mock, anchor);
+        expect(mock.calls).toEqual([[1, 2]]);
+        expect(mock.clearedAnchor).toBe(false);
+      }
+    });
+  }
+
+  it("resets the lower selection on empty buffers without selecting placeholder text", () => {
+    const mock = editor(0, "");
+    selectVisualCharacterRange(mock, 0);
+    expect(mock.calls).toEqual([]);
+    expect(mock.resets).toBe(1);
+    expect(mock.clearedAnchor).toBe(false);
+  });
+
+  it("uses host display-cell offsets even when they exceed JavaScript string length", () => {
+    const mock = editor(5, "界");
+    selectVisualCharacterRange(mock, 4);
+    expect(mock.probes).toEqual([[5, 6]]);
+    expect(mock.calls).toEqual([[4, 6]]);
   });
 
   it("leaves unsupported editors alone instead of using an anchor-clearing fallback", () => {

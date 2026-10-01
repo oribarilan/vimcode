@@ -430,7 +430,9 @@ describe("visual character selection dispatch guard", () => {
       cursorOffset: 2,
       visualCursor: { logicalRow: 0 },
       cursorStyle: { style: "line", blinking: true },
+      editBuffer: { getTextRange: () => "l" },
       editorView: {
+        resetSelection: () => {},
         setSelection(start: number, end: number) {
           selections.push([start, end]);
         },
