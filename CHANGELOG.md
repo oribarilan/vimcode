@@ -16,7 +16,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Changed
 
-- Document installation, options, and custom leader settings separately for OpenCode v1 and experimental v2.
+- Document Git installation, options, and custom leader settings separately for OpenCode v1 and experimental v2.
+- Corrected contributor paths for the split Vim engine and documented CI's compatibility-harness checks.
 
 ### Fixed
 

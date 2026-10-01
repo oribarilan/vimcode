@@ -21,7 +21,9 @@ The root `tui.ts` re-exports `src/index.ts` for v2's local-directory loader. Thi
 
 The v2 public `keymap` has no key intercept or configured-leader lookup. The POC uses `context.renderer.keyInput.prependListener("keypress", ...)` to intercept prompt keys **before** the host keymap. It calls both `preventDefault()` and `stopPropagation()` on consumed keys. This raw OpenTUI ordering is not a documented OpenCode plugin guarantee; do not rely on it as production compatibility without testing against installed packages and future host releases.
 
-Build a tarball from this worktree with `npm pack --ignore-scripts --pack-destination /absolute/path/to/artifacts`. With a separate v2 installation, configure that artifact in the global `cli.json` (not v1's `tui.json`):
+The [README](../README.md#opencode-v2-experimental) shows the tested Git install pinned to commit `d8050f765b6c2c4e7fdc700d8345c1c5752644cb`. Use the global `cli.json` on v2, not v1's `tui.json`.
+
+To test local changes instead, create a fresh artifact directory and build a tarball with `npm pack --ignore-scripts --pack-destination /absolute/path/to/artifacts`. Configure that artifact in `cli.json`:
 
 ```json
 {
@@ -51,6 +53,8 @@ The same tarball was exercised in real macOS tmux sessions on OpenCode **2.0.15*
 - A repeatable installed-package exact-state harness now verifies visual selection both directions, physical-key setup, Unicode replacement, custom leader, autocomplete, v2 forms/permission rejection, disable/reload, and full tarball/cache identity. After review fixes, independent parent receipts on v1.18.33/v2.0.15 report 26/33 passing checks respectively, two explicitly named inherited known gaps each, zero failures; cold and warm loads both passed. Visual checkpoints assert offsets, ranges, selected text and focus, including mixed horizontal/word/line/vertical motions. Each checkpoint requires a fresh observer acknowledgement. Typecheck still reports the same eight pre-existing errors.
 
 - Subsequent checked-review regression runs on the same pinned hosts passed 39 v1 / 48 v2 exact-state checks, cold and warm installation, with only the unchanged tab-offset and snapshot-redo known gaps. Independent parent runs confirmed those results at `/private/tmp/vimcode-pr82-fixes/parent-v1/receipt.json` and `parent-v2/receipt.json`, using artifact SHA-256 `5158aae9c59ee27bb6476d357618ea59a58e0603ca7c199facd389bb88e49530`. New cases cover empty buffers, EOF, EOL and backward EOL, read-only wide-character/tab endpoint controls, and a real v2 home-to-session editor switch. Horizontal endpoints now use host-coordinate range probes rather than JavaScript string lengths; visual ownership is captured on entry and re-anchored at the new editor's cursor on the next eligible key. Mixed word/line/vertical endpoint differences remain explicit.
+
+- Pinned Git installs at `d8050f765b6c2c4e7fdc700d8345c1c5752644cb` also passed cold and warm loading on v1.18.33/v2.0.15, with 39/48 exact-state checks and the same two known gaps. Both verified the installed source and manifest byte-for-byte against a local package reference. The existing harness was reused through a temporary configure wrapper that replaced only the install spec; the reference tarball was not the installed package. Receipts are `/private/tmp/vimcode-pr82-git-d8050f7-v1/receipt.json` and `/private/tmp/vimcode-pr82-git-d8050f7-v2/receipt.json`; the wrapper is `/private/tmp/vimcode-pr82-git-install-check.py`.
 
 Earlier parent receipts are `/private/tmp/vimcode-v2-hardening/review-fixed-v1/receipt.json` and `review-fixed-v2/receipt.json`. Both verify artifact SHA-256 `8e43ee3812ecf2baf325fcc97b4e73d6e49ea116ed719fb2e7e12dbab218f7f0`. Earlier exploratory evidence remains under `/tmp/vimcode-v2-poc-runtime/` and `/tmp/vimcode-v2-alternatives/`.
 

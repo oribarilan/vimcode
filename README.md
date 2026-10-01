@@ -40,28 +40,19 @@ You'll see a toast when a newer version is available (can be turned off).
 
 ### OpenCode v2 (experimental)
 
-v2 support is unreleased. The existing `v0.18.1` release does **not** support v2. To try it, build a tarball from a checkout containing this branch's v2 changes:
-
-```sh
-mkdir -p /absolute/path/to/artifacts
-npm pack --ignore-scripts --pack-destination /absolute/path/to/artifacts
-```
-
-Add the tarball to your global `cli.json`, using its absolute path:
+v2 support is unreleased. The existing `v0.18.1` release does **not** support v2. To try the tested PR code, pin this commit in your global `cli.json`:
 
 ```json
 {
   "plugins": [
     {
-      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz"
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb"
     }
   ]
 }
 ```
 
-The generated filename still uses the package version `0.18.1`, but this tarball contains the unreleased v2 code. Use a new artifact directory when rebuilding so OpenCode does not reuse an older cached package.
-
-This path was tested on OpenCode 2.0.15 on macOS. See [the v2 POC instructions](docs/opencode-v2-poc.md) for local development and compatibility limits.
+Cold and warm Git installs were tested on OpenCode 2.0.15 on macOS. Change the pinned ref when updating. See [the v2 POC instructions](docs/opencode-v2-poc.md) for local development, tarball installation, and compatibility limits.
 
 ## Configuration
 
@@ -83,7 +74,7 @@ Put `options` alongside `package` in `cli.json`:
 {
   "plugins": [
     {
-      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz",
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb",
       "options": { "updateCheck": false }
     }
   ]
@@ -140,7 +131,7 @@ On **v2**, set both the host keybind and the plugin option in `cli.json`:
   "keybinds": { "leader": "space" },
   "plugins": [
     {
-      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz",
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb",
       "options": { "experimentalV2Leader": "space" }
     }
   ]
@@ -270,7 +261,7 @@ Configurable key bindings are next once the core vim coverage stabilizes.
 
 ## How it works
 
-vimcode registers a key intercept on every prompt keypress. A pure handler in `src/vim.ts` takes the current mode and key, returns a list of actions (move cursor, delete word, switch mode, etc.) without touching the plugin API. `src/index.ts` applies those actions through `@opentui/keymap` commands.
+On v1, vimcode registers a host key intercept. The experimental v2 adapter uses a renderer key listener instead. Pure handlers in `src/vim/` take the current mode and key and return actions without touching the plugin API. `src/index.ts` applies those actions through editor methods and host commands; `src/v2.ts` adapts the v2 context to the shared controller.
 
 ## Contributing
 
