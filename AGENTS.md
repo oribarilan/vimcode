@@ -59,7 +59,7 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 ```
 src/
   index.ts       (474 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
-  editor.ts      (30 lines)   Host-coordinate horizontal selection bounds, preserving native anchor
+  editor.ts      (28 lines)   Host-coordinate horizontal selection bounds, preserving native anchor
   v2.ts          (243 lines)  Experimental v2 TUI facade (host input, commands, state, events)
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
@@ -87,7 +87,7 @@ test/
     visual.test.ts   (287)    handleVisualKey branches
     textobject.test.ts (64)   resolveTextObject dispatch seam
   integration.test.ts (662)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
-  editor.test.ts      (90)   Host-coordinate boundaries without resetting the native selection anchor
+  editor.test.ts     (118)   Host-coordinate boundaries and opaque selection-color forwarding
   v2.test.ts         (369)   Experimental v2 facade contract and lifecycle tests
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
   compat/                    Optional real-host Python driver and test-only TUI fixture (not packaged)

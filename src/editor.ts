@@ -1,12 +1,10 @@
-import type { RGBA } from "@opentui/core";
-
-type VisualSelectionEditor = {
+type VisualSelectionEditor<Color> = {
   cursorOffset: number;
-  selectionBg?: RGBA;
-  selectionFg?: RGBA;
+  selectionBg?: Color;
+  selectionFg?: Color;
   editBuffer?: { getTextRange(start: number, end: number): string };
   editorView?: {
-    setSelection(start: number, end: number, bg?: RGBA, fg?: RGBA): void;
+    setSelection(start: number, end: number, bg?: Color, fg?: Color): void;
     resetSelection(): void;
   };
   requestRender?: () => void;
@@ -15,7 +13,7 @@ type VisualSelectionEditor = {
 // Normalize the visible range without clearing the renderer's native anchor.
 // The top-level setSelection() clears it, so a following word/line motion
 // would restart selection at the current cursor instead of the Vim anchor.
-export function selectVisualCharacterRange(editor: VisualSelectionEditor, anchor: number): void {
+export function selectVisualCharacterRange<Color>(editor: VisualSelectionEditor<Color>, anchor: number): void {
   if (!editor.editorView?.setSelection || !editor.editBuffer?.getTextRange) return;
   const start = Math.min(anchor, editor.cursorOffset);
   const last = Math.max(anchor, editor.cursorOffset);

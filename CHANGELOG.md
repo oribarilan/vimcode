@@ -14,11 +14,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - Optional installed-package compatibility harness with exact editor-state checks on pinned v1/v2 binaries; lightweight harness regressions run in CI without downloading hosts.
 - `just dev2` launches local source with a pinned OpenCode v2 release and separate `.dev2/` settings/history.
 
+### Changed
+
+- Document installation, options, and custom leader settings separately for OpenCode v1 and experimental v2.
+
 ### Fixed
 
 - Visual `h`/`l` now selects through the cursor in both tested hosts, including backward motions, empty buffers and EOF/EOL boundaries, without resetting the native anchor for subsequent word or line motions. Visual mode re-anchors at the new prompt's cursor when the focused editor changes.
 - The v2 form leader guard and Vim controller now share a per-activation disabled setting; external TUI toggles take effect on reload, local `/vim` toggles take effect immediately.
-- Compatibility checks ignore user tmux configuration and poll boundedly for asynchronous form/permission completion, retaining the last server response in receipts.
+- Compatibility checks ignore user tmux configuration, reject JSONC project-config ancestors, and poll boundedly for asynchronous form/permission completion, retaining the last server response in receipts.
+- Selection normalization no longer requires an installed `@opentui/core` type dependency; host-owned selection colors are forwarded unchanged.
 
 ## [0.18.1] — 2026-09-11
 

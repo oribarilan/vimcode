@@ -22,6 +22,10 @@
 
 ## Install
 
+Use the instructions for your OpenCode major version. Both versions load the same vimcode package, but their config files and plugin entries differ.
+
+### OpenCode v1
+
 Add to your `tui.json` (or `.opencode/tui.json`):
 
 ```json
@@ -34,9 +38,36 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 You'll see a toast when a newer version is available (can be turned off).
 
+### OpenCode v2 (experimental)
+
+v2 support is unreleased. The existing `v0.18.1` release does **not** support v2. To try it, build a tarball from a checkout containing this branch's v2 changes:
+
+```sh
+mkdir -p /absolute/path/to/artifacts
+npm pack --ignore-scripts --pack-destination /absolute/path/to/artifacts
+```
+
+Add the tarball to your global `cli.json`, using its absolute path:
+
+```json
+{
+  "plugins": [
+    {
+      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz"
+    }
+  ]
+}
+```
+
+The generated filename still uses the package version `0.18.1`, but this tarball contains the unreleased v2 code. Use a new artifact directory when rebuilding so OpenCode does not reuse an older cached package.
+
+This path was tested on OpenCode 2.0.15 on macOS. See [the v2 POC instructions](docs/opencode-v2-poc.md) for local development and compatibility limits.
+
 ## Configuration
 
-To pass options, use the tuple form in `tui.json`:
+### OpenCode v1 options
+
+Use the tuple form in `tui.json`:
 
 ```json
 {
@@ -44,11 +75,29 @@ To pass options, use the tuple form in `tui.json`:
 }
 ```
 
+### OpenCode v2 options
+
+Put `options` alongside `package` in `cli.json`:
+
+```json
+{
+  "plugins": [
+    {
+      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz",
+      "options": { "updateCheck": false }
+    }
+  ]
+}
+```
+
+### Available options
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `updateCheck` | `boolean` | `true` | On startup, check GitHub for new versions (at most once per day). This is the only network request vimcode makes. Set to `false` to disable. |
 | `modeIndicator` | `"toast"` \| `"none"` | `"toast"` | How to show the current mode. `"toast"` flashes a brief notification on each switch. `"none"` disables it, relying on cursor shape alone. |
 | `startMode` | `"insert"` \| `"normal"` | `"insert"` | Which mode to start in when OpenCode launches. |
+| `experimentalV2Leader` | `string` \| `string[]` \| `false` | `"ctrl+x"` | v2 only. Must match the host's leader key. Use `false` or `"none"` if the host leader is disabled. |
 
 ## What it does
 
@@ -68,13 +117,13 @@ First Escape in insert mode switches to normal - it won't trigger OpenCode's dou
 
 ### Leader key
 
-vimcode reads OpenCode's leader key from your `tui.json` keybinds and handles it automatically, no plugin-side config needed.
+On OpenCode v1, vimcode reads the leader key from your `tui.json` keybinds automatically. On v2, it cannot read the host's configured leader, so `experimentalV2Leader` must match it. The default `ctrl+x` needs no extra plugin option.
 
 In **normal and visual mode**, the leader key and the follow-up key pass straight through to OpenCode, so leader shortcuts (`<leader>c` for copy, etc.) work as expected.
 
 In **insert mode**, printable leaders (like space) insert their character. Non-printable leaders (like `ctrl+x`) pass through to OpenCode, so leader shortcuts work from any mode.
 
-This allows, for example, to use the popular vim-style `space` leader, set it in your `tui.json`:
+For a `space` leader on **v1**, set it in `tui.json`:
 
 ```json
 {
@@ -84,7 +133,21 @@ This allows, for example, to use the popular vim-style `space` leader, set it in
 }
 ```
 
-Note that OpenCode defaults the leader to `ctrl+x`.
+On **v2**, set both the host keybind and the plugin option in `cli.json`:
+
+```json
+{
+  "keybinds": { "leader": "space" },
+  "plugins": [
+    {
+      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz",
+      "options": { "experimentalV2Leader": "space" }
+    }
+  ]
+}
+```
+
+If they do not match, vimcode can swallow leader shortcuts or printable input.
 
 ### Platform notes
 

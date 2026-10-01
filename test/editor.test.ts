@@ -47,6 +47,34 @@ describe("selectVisualCharacterRange", () => {
     expect(mock.renders).toBe(1);
   });
 
+  const background = { name: "background" };
+  const foreground = { name: "foreground" };
+  for (const [name, bg, fg] of [
+    ["both", background, foreground],
+    ["background only", background, undefined],
+    ["foreground only", undefined, foreground],
+    ["neither", undefined, undefined],
+  ] as const) {
+    it(`forwards host-owned selection colors unchanged (${name})`, () => {
+      let colors: Array<typeof background | undefined> = [];
+      const mock = {
+        ...editor(2),
+        ...(bg ? { selectionBg: bg } : {}),
+        ...(fg ? { selectionFg: fg } : {}),
+        editorView: {
+          resetSelection: () => {},
+          setSelection(_start: number, _end: number, selectedBg?: typeof background, selectedFg?: typeof foreground) {
+            colors = [selectedBg, selectedFg];
+          },
+        },
+      };
+      selectVisualCharacterRange(mock, 0);
+      expect(colors).toHaveLength(2);
+      expect(colors[0]).toBe(bg);
+      expect(colors[1]).toBe(fg);
+    });
+  }
+
   it("keeps the original anchor when moving backward", () => {
     const mock = editor(2);
     selectVisualCharacterRange(mock, 4);

@@ -1,8 +1,11 @@
+import io
+from itertools import product
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -10,6 +13,44 @@ import uuid
 
 from cases import completed_command
 from driver import tmux
+from run import main
+
+
+def test_project_config_ancestors_are_rejected_before_packaging_or_host_launch():
+    names = ("opencode.json", "opencode.jsonc", "tui.json", "tui.jsonc", "cli.json", "cli.jsonc")
+    hosts = (("v1", "1.18.33"), ("v2", "2.0.15"))
+    for name, (host, version), symlinked in product(names, hosts, (False, True)):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            parent = root / "project"
+            parent.mkdir()
+            (parent / name).write_text("{}\n")
+            output = parent / "output"
+            output.mkdir()
+            supplied = output
+            if symlinked:
+                supplied = root / "output-link"
+                supplied.symlink_to(output, target_is_directory=True)
+            case = f"{host}, {name}, symlinked={symlinked}"
+            argv = ["run.py", "--host", host, "--binary", sys.executable,
+                    "--expect-version", version, "--output", str(supplied)]
+            stderr = io.StringIO()
+            with patch("run.sys.argv", argv), patch("run.sys.platform", "linux"), \
+                 patch("run.sys.stderr", stderr), patch("run.shutil.which", return_value="/usr/bin/mock"), \
+                 patch("run.subprocess.check_output", return_value=version), \
+                 patch("run.subprocess.run", side_effect=AssertionError(f"Packaged under {case}")) as pack, \
+                 patch("run.start") as launch:
+                try:
+                    main()
+                except SystemExit as error:
+                    assert error.code == 2, case
+                else:
+                    raise AssertionError(f"Accepted project config ancestor: {case}")
+            assert "--output must be outside a checkout and project OpenCode config" in stderr.getvalue(), case
+            assert str(parent) in stderr.getvalue(), case
+            pack.assert_not_called()
+            launch.assert_not_called()
+            assert list(output.iterdir()) == [], case
 
 
 def test_tmux_always_names_owned_socket_and_empty_config():

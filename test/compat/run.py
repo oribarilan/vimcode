@@ -55,7 +55,7 @@ def main():
 
     output = args.output.resolve()
     for ancestor in (output, *output.parents):
-        if (ancestor / ".git").exists() or any((ancestor / name).exists() for name in (".opencode", "opencode.json", "opencode.jsonc", "tui.json", "cli.json")):
+        if (ancestor / ".git").exists() or any((ancestor / name).exists() for name in (".opencode", "opencode.json", "opencode.jsonc", "tui.json", "tui.jsonc", "cli.json", "cli.jsonc")):
             parser.error(f"--output must be outside a checkout and project OpenCode config: {ancestor}")
     if output.exists() and any(output.iterdir()):
         parser.error(f"--output must be new or empty: {output}")
