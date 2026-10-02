@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the plugin failing to load under OpenCode 2.0 with `Invalid V2 TUI plugin module`. OpenCode 2.0 validates the V2 TUI module default export and requires the initialization function under the `setup` key (OpenCode 1.18 and earlier resolve it via `tui`). The init function is now exported under both keys so the plugin loads on either runtime.
+
 ## [0.18.1] — 2026-09-11
 
 ### Changed

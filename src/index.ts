@@ -1,4 +1,4 @@
-import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { writeClipboard } from "./clipboard";
 import { findMatchingLeader, type KeyLike, leaderChar } from "./leader";
 import { checkForUpdate } from "./version";
@@ -13,9 +13,10 @@ import {
   translateKey,
 } from "./vim";
 
-const plugin: TuiPluginModule = {
-  id: "vimcode",
-  tui: async (api, options) => {
+// OpenCode 2.0+ requires the V2 TUI module to expose its init under `setup`,
+// while OpenCode 1.18 and current upstream resolve it via `tui`. Export the same
+// function under both keys so the plugin loads on either runtime.
+const setup: TuiPlugin = async (api, options) => {
     const state = createVimState();
     const startMode = options?.startMode === "normal" ? "normal" : "insert";
     state.mode = startMode;
@@ -402,7 +403,14 @@ const plugin: TuiPluginModule = {
       },
       { priority: 10_000 },
     );
-  },
+  };
+
+// V2 TUI module shape. `TuiPluginModule` has no `setup` field, so widen the
+// type to carry it. `tui` is kept for 1.18/upstream compatibility.
+const plugin: TuiPluginModule & { setup: TuiPlugin } = {
+  id: "vimcode",
+  tui: setup,
+  setup,
 };
 
 function offsetToLineCol(text: string, offset: number): [number, number] {

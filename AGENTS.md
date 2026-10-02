@@ -24,6 +24,7 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 - **SolidJS/JSX still does not work in cache-installed plugins.** Last reproduced on 2026-09-08 with OpenCode 1.18.21 using an npm-source tarball. A plain `.ts` entry and its TUI hook loaded, but importing a `.tsx` module with `/** @jsxImportSource @opentui/solid */` failed with `Cannot find module '@opentui/solid/jsx-dev-runtime'`. The Solid transform excludes files under `node_modules`; the runtime prescan therefore cannot see the JSX-generated import before Bun resolves it. OpenCode 1.18.25 has identical relevant runtime code and also pins OpenTUI 0.4.5. OpenTUI 0.5.9 retains the exclusion. Until upstream changes this path, avoid JSX and `solid-js` imports in distributed plugins. Use `api.ui.toast()` for mode feedback instead of slot indicators. See [#3](https://github.com/oribarilan/vimcode/issues/3).
 - **Do NOT add `solid-js`, `@opentui/solid`, or `@opentui/core` as dependencies or peerDependencies.** If they're in `package.json`, Bun installs them into the plugin's `node_modules/`, and the local `.d.ts` stubs shadow the host's runtime module intercepts. The host provides these at runtime via `ensureRuntimePluginSupport`. Keep them only in `devDependencies` (via `@opencode-ai/plugin` which pulls them in for type-checking).
 - **Test distributed plugin behavior through the package cache.** `dev-tui.json` uses `"plugin": ["."]`, which loads from the working tree and does not reproduce cache-only module resolution failures. Use an npm-source tarball spec such as `name@file:/absolute/path/package.tgz` or the real `git+https://...#ref` install form, and clear only that package's cache entry before retesting.
+- **OpenCode 2.0+ requires the V2 TUI module to export its init under `setup`.** The loader validates the module default export with a schema that requires `"setup" in module && typeof module.setup === "function"`; the old `tui` key is then rejected as `Invalid V2 TUI plugin module`. The entrypoint specifier is unchanged (`exports["./tui"]` still resolves the file) — only the default-export **key** moved from `tui` to `setup`. Because 1.18 and 2.0 differ, `src/index.ts` exports the init function under both `tui` and `setup` (the same function) for cross-version compatibility.
 
 ### Editor widget API
 
@@ -58,7 +59,7 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (414 lines)  Plugin entry: intercept registration, action application
+  index.ts       (422 lines)  Plugin entry: intercept registration, action application
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
     types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
