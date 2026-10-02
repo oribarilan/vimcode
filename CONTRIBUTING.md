@@ -4,17 +4,18 @@
 
 ```bash
 just install     # install deps
-just dev         # launch OpenCode with the plugin loaded
+just dev         # launch OpenCode v1 with the plugin loaded
+just dev2        # launch pinned v2 with local source and separate .dev2/ state
 just check       # run lint + tests
 ```
 
-Running `opencode` directly in this directory won't load the plugin. You need `just dev`, which sets `OPENCODE_TUI_CONFIG=dev-tui.json`.
+Running `opencode` directly in this directory won't load the plugin. `just dev` sets `OPENCODE_TUI_CONFIG=dev-tui.json`. `just dev2` uses npm's package runner (`npx`) for OpenCode 2.0.15 and keeps its on-disk settings/history separate under `.dev2/`. To use an existing v2 binary, run `just dev2 /absolute/path/to/opencode-v2` or set `OPENCODE_V2_BIN`. See [the v2 POC notes](docs/opencode-v2-poc.md#local-development).
 
 ## Adding a keybinding
 
-1. Add the key check in the right section of `src/vim.ts` (`handleNormalKey()` for normal mode keys).
+1. Add the key check in the matching mode handler under `src/vim/` (`src/vim/normal.ts` for normal mode keys).
 2. Return appropriate actions: `{ consume: true, actions: [{ type: "cmd", cmd: "input.some.command" }] }`
-3. Add a test in `test/vim.test.ts`.
+3. Add a test in the matching file under `test/vim/` (`test/vim/normal.test.ts` for normal mode keys).
 4. Run `just check`, then `just dev` to verify.
 
 See `AGENTS.md` for operator+motion combos and other patterns.
@@ -38,7 +39,7 @@ Types match commit prefixes: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`.
 1. Create a branch: `git checkout -b feat/your-feature`
 2. Make changes, run `just check` locally. It must pass with zero errors and zero warnings.
 3. Push and open a PR against `main`.
-4. CI runs `just check`. Warnings are treated as errors — the PR will be blocked until the check is fully clean.
+4. CI runs `just check` and `just compat-unit`. Warnings are treated as errors; both checks must pass. Live-host compatibility checks remain manual.
 5. PRs are squash-merged. The PR title becomes the commit message on `main`.
 
 ## Commit messages
@@ -67,7 +68,7 @@ Releases are manual.
 4. Update link references at the bottom of CHANGELOG.md.
 5. Bump version in `package.json` (`npm version X.Y.Z --no-git-tag-version`).
 6. Bump `VERSION` in `src/version.ts` to match.
-7. Update **all** version tags in `README.md` — the install snippet and the config example both reference a specific version.
+7. Update **all** package refs and unreleased wording in `README.md` and this guide for both host versions, including options and leader examples. For the first v2 release, replace the experimental commit refs with the new tag.
 8. Run `just check`.
 9. Open a PR with the release changes. Title: `Release vX.Y.Z: <one-line summary>`.
 10. After CI passes, squash-merge the PR.
@@ -76,14 +77,28 @@ Releases are manual.
 
 ## Distribution
 
-vimcode is installed via git URL in OpenCode's `tui.json`:
+Both host versions load the same `./tui` package entry via a Git URL. Pin a tag or commit so upgrades use a new cache entry.
+
+On OpenCode **v1**, use `tui.json`:
 
 ```json
-{ "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git"] }
+{ "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.18.1"] }
 ```
 
-Bare names (like `"vimcode"`) trigger npm resolution, which won't work since the package isn't published. The `@git+` prefix tells OpenCode to clone from GitHub.
+On OpenCode **v2**, use `cli.json`. v2 support is unreleased; this example pins the tested PR commit, not the v1-only `v0.18.1` release:
+
+```json
+{
+  "plugins": [
+    {
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb"
+    }
+  ]
+}
+```
+
+Bare names (like `"vimcode"`) trigger npm resolution, which won't work since the package isn't published. The `@git+` prefix tells OpenCode to clone from GitHub. See [the README](README.md#install) for options and v2 compatibility limits; [the POC notes](docs/opencode-v2-poc.md#package-configuration) also cover tarball installs.
 
 ## Architecture
 
-`src/vim.ts` owns all key handling (pure functions). `src/index.tsx` owns all OpenCode API interaction. See `AGENTS.md` for the full architecture guide.
+`src/vim/` owns pure key handling. `src/index.ts` applies actions and registers the shared controller; `src/v2.ts` adapts the v2 host API. See `AGENTS.md` for the full architecture guide.

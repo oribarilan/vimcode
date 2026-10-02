@@ -1,0 +1,8 @@
+{
+  "name": "vimcode-compat-fixture",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tui": "./tui.ts"
+  }
+}

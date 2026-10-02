@@ -417,6 +417,89 @@ describe("undo snapshot — deleteRange + u", () => {
   });
 });
 
+describe("visual character selection dispatch guard", () => {
+  it("normalizes only successful motions on the same focused editor while visual remains active", async () => {
+    const plugin = (await import("../src/index")).default;
+    const selections: Array<[number, number]> = [];
+    const disposers: Array<() => void> = [];
+    let handler: ((input: { event: { name: string; eventType: string }; consume: () => void }) => void) | undefined;
+    let ok = true;
+    const dispatched: string[] = [];
+    const editor = {
+      plainText: "hello",
+      cursorOffset: 2,
+      visualCursor: { logicalRow: 0 },
+      cursorStyle: { style: "line", blinking: true },
+      editBuffer: { getTextRange: () => "l" },
+      editorView: {
+        resetSelection: () => {},
+        setSelection(start: number, end: number) {
+          selections.push([start, end]);
+        },
+      },
+    };
+    const renderer: { currentFocusedEditor: typeof editor; currentFocusedRenderable?: typeof editor } = {
+      currentFocusedEditor: editor,
+      currentFocusedRenderable: editor,
+    };
+    const api = {
+      renderer,
+      ui: { toast: () => {}, dialog: { open: false } },
+      route: { current: { name: "home" } },
+      state: { session: { question: () => [], permission: () => [] } },
+      kv: { get: async () => undefined },
+      lifecycle: { onDispose: (dispose: () => void) => disposers.push(dispose) },
+      keymap: {
+        intercept: (_kind: string, callback: typeof handler) => {
+          handler = callback;
+        },
+        dispatchCommand: (cmd: string) => {
+          dispatched.push(cmd);
+          return { ok: cmd.startsWith("prompt.autocomplete.") ? false : ok };
+        },
+      },
+    };
+    await plugin.tui(api as unknown as Parameters<typeof plugin.tui>[0], { updateCheck: false });
+    const press = (name: string) => {
+      let consumed = false;
+      handler?.({
+        event: { name, eventType: "press" },
+        consume: () => {
+          consumed = true;
+        },
+      });
+      return consumed;
+    };
+    try {
+      expect(press("escape")).toBe(true);
+      expect(press("v")).toBe(true);
+      expect(press("l")).toBe(true);
+      await Bun.sleep(20);
+      expect(dispatched).toContain("input.select.right");
+      expect(selections).toEqual([[1, 2]]);
+
+      ok = false;
+      press("l");
+      await Bun.sleep(20);
+      expect(selections).toHaveLength(1);
+
+      ok = true;
+      press("l");
+      renderer.currentFocusedRenderable = undefined;
+      await Bun.sleep(20);
+      expect(selections).toHaveLength(1);
+
+      renderer.currentFocusedRenderable = editor;
+      press("l");
+      press("v"); // leave visual before the deferred dispatch runs
+      await Bun.sleep(20);
+      expect(selections).toHaveLength(1);
+    } finally {
+      for (const dispose of disposers) dispose();
+    }
+  });
+});
+
 // ── arrow keys pass through the intercept (issue #63) ─────
 
 describe("arrow keys pass through the intercept", () => {
