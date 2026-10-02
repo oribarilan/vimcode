@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="#install">Install</a> ·
+  <a href="#support-policy">Support policy</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#what-it-does">What it does</a> ·
   <a href="#keybindings">Keybindings</a> ·
@@ -20,11 +21,24 @@
 
 ---
 
+## Support policy
+
+OpenCode v2 support is rolling out gradually, starting with experimental support in vimcode v0.19.0. Future maintenance will move to v2 only. This release still includes v1 support.
+
+| OpenCode version | Recommended vimcode pin | Status |
+|------------------|-------------------------|--------|
+| v1 | `v0.18.1` | Previous v1-only release. `v0.19.0` also includes v1 compatibility during the transition. |
+| v2 | `v0.19.0` | Experimental; validated on OpenCode 2.0.15 on macOS. |
+
+V1 users can stay on an older pinned release instead of following the v2 rollout. We have not set a date for removing v1 support.
+
 ## Install
 
-Use the instructions for your OpenCode major version. Both versions load the same vimcode package, but their config files and plugin entries differ.
+Use the instructions for your OpenCode major version. Both versions use the same package name, but their config files and recommended pins differ.
 
 ### OpenCode v1
+
+We recommend pinning `v0.18.1` for existing v1 users who want the previous v1-only behavior. To opt into the shared fixes in `v0.19.0`, change the Git ref to `v0.19.0`; revert to the older pin if you encounter a regression.
 
 Add to your `tui.json` (or `.opencode/tui.json`):
 
@@ -36,23 +50,23 @@ Add to your `tui.json` (or `.opencode/tui.json`):
 
 > **Why a versioned ref?** OpenCode resolves `@latest` once and caches it forever. Bumping the version in your config is the only reliable way to get updates.
 
-You'll see a toast when a newer version is available (can be turned off).
+By default, you'll see a toast when a newer vimcode version is available. If you stay on the legacy v1 pin, set `updateCheck: false` using the [v1 options example](#opencode-v1-options) to suppress those notifications.
 
 ### OpenCode v2 (experimental)
 
-v2 support is unreleased. The existing `v0.18.1` release does **not** support v2. To try the tested PR code, pin this commit in your global `cli.json`:
+Pin `v0.19.0` in your global `cli.json`. The older `v0.18.1` release does **not** support v2.
 
 ```json
 {
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb"
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0"
     }
   ]
 }
 ```
 
-Cold and warm Git installs were tested on OpenCode 2.0.15 on macOS. Change the pinned ref when updating. See [the v2 POC instructions](docs/opencode-v2-poc.md) for local development, tarball installation, and compatibility limits.
+Validation covers OpenCode 2.0.15 on macOS. Change the pinned ref when updating. See [the v2 POC instructions](docs/opencode-v2-poc.md) for local development, tarball installation, and compatibility limits. To roll back v2, remove the plugin entry; `v0.18.1` cannot be used as a v2 fallback.
 
 ## Configuration
 
@@ -74,7 +88,7 @@ Put `options` alongside `package` in `cli.json`:
 {
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb",
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0",
       "options": { "updateCheck": false }
     }
   ]
@@ -131,7 +145,7 @@ On **v2**, set both the host keybind and the plugin option in `cli.json`:
   "keybinds": { "leader": "space" },
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb",
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0",
       "options": { "experimentalV2Leader": "space" }
     }
   ]

@@ -1,6 +1,6 @@
 # Experimental OpenCode v2 POC
 
-This branch is a **proof of concept**, not a supported vimcode release. The same `./tui` entry has v1 `tui(api, options)` and v2 `setup(context)` callbacks. v1 still uses its existing API; v2 adapts the host UI, storage, commands and events to the same Vim controller and engine.
+These notes record the v2 proof of concept and compatibility evidence. v2 support is experimental in vimcode v0.19.0; this is not a full-parity or all-versions support declaration. The same `./tui` entry has v1 `tui(api, options)` and v2 `setup(context)` callbacks. v1 still uses its existing API; v2 adapts the host UI, storage, commands and events to the same Vim controller and engine.
 
 ## Local development
 
@@ -21,7 +21,7 @@ The root `tui.ts` re-exports `src/index.ts` for v2's local-directory loader. Thi
 
 The v2 public `keymap` has no key intercept or configured-leader lookup. The POC uses `context.renderer.keyInput.prependListener("keypress", ...)` to intercept prompt keys **before** the host keymap. It calls both `preventDefault()` and `stopPropagation()` on consumed keys. This raw OpenTUI ordering is not a documented OpenCode plugin guarantee; do not rely on it as production compatibility without testing against installed packages and future host releases.
 
-The [README](../README.md#opencode-v2-experimental) shows the tested Git install pinned to commit `d8050f765b6c2c4e7fdc700d8345c1c5752644cb`. Use the global `cli.json` on v2, not v1's `tui.json`.
+The [README](../README.md#opencode-v2-experimental) shows the release Git install pinned to `v0.19.0`. The earlier Git experiment below used commit `d8050f765b6c2c4e7fdc700d8345c1c5752644cb`. Use the global `cli.json` on v2, not v1's `tui.json`.
 
 To test local changes instead, create a fresh artifact directory and build a tarball with `npm pack --ignore-scripts --pack-destination /absolute/path/to/artifacts`. Configure that artifact in `cli.json`:
 
@@ -29,7 +29,7 @@ To test local changes instead, create a fresh artifact directory and build a tar
 {
   "plugins": [
     {
-      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.18.1.tgz",
+      "package": "vimcode@file:/absolute/path/to/artifacts/vimcode-0.19.0.tgz",
       "options": { "updateCheck": false, "experimentalV2Leader": "ctrl+x" }
     }
   ]

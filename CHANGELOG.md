@@ -8,14 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-10-02
+
 ### Added
 
-- Experimental OpenCode v2 TUI compatibility POC using a dual v1/v2 entrypoint and a v2 renderer-key interception adapter. Not yet verified as a supported v2 release.
+- Experimental OpenCode v2 TUI support using a dual v1/v2 entrypoint and a renderer-key interception adapter, validated on OpenCode 2.0.15 on macOS.
 - Optional installed-package compatibility harness with exact editor-state checks on pinned v1/v2 binaries; lightweight harness regressions run in CI without downloading hosts.
 - `just dev2` launches local source with a pinned OpenCode v2 release and separate `.dev2/` settings/history.
 
 ### Changed
 
+- Started a gradual transition toward v2-only maintenance. v1 compatibility remains in v0.19.0; existing v1 users can stay pinned to the recommended v0.18.1 release.
 - Document Git installation, options, and custom leader settings separately for OpenCode v1 and experimental v2.
 - Corrected contributor paths for the split Vim engine and documented CI's compatibility-harness checks.
 
@@ -366,7 +369,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/oribarilan/vimcode/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/oribarilan/vimcode/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/oribarilan/vimcode/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/oribarilan/vimcode/compare/v0.17.0...v0.17.1
