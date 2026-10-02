@@ -58,6 +58,10 @@ Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Add your change
 - **MINOR**: New keybindings, new features (backward compatible)
 - **MAJOR**: Breaking changes, removed keybindings
 
+## Host support policy
+
+OpenCode v2 support is rolling out gradually and is experimental in vimcode v0.19.0. Future maintenance will move to v2 only; v1 compatibility remains in this release. The recommended v1 pin stays at `v0.18.1`. Do not automatically advance that legacy recommendation when preparing a v2-focused release.
+
 ## Release process
 
 Releases are manual.
@@ -68,7 +72,7 @@ Releases are manual.
 4. Update link references at the bottom of CHANGELOG.md.
 5. Bump version in `package.json` (`npm version X.Y.Z --no-git-tag-version`).
 6. Bump `VERSION` in `src/version.ts` to match.
-7. Update **all** package refs and unreleased wording in `README.md` and this guide for both host versions, including options and leader examples. For the first v2 release, replace the experimental commit refs with the new tag.
+7. Update the current v2 package refs and release wording in `README.md` and this guide, including options and leader examples. Keep the recommended v1 pin unchanged unless a v1 upgrade is deliberately recommended and verified.
 8. Run `just check`.
 9. Open a PR with the release changes. Title: `Release vX.Y.Z: <one-line summary>`.
 10. After CI passes, squash-merge the PR.
@@ -79,19 +83,19 @@ Releases are manual.
 
 Both host versions load the same `./tui` package entry via a Git URL. Pin a tag or commit so upgrades use a new cache entry.
 
-On OpenCode **v1**, use `tui.json`:
+On OpenCode **v1**, use `tui.json`. The recommended legacy pin is `v0.18.1`; `v0.19.0` still includes v1 compatibility for users who opt in:
 
 ```json
 { "plugin": ["vimcode@git+https://github.com/oribarilan/vimcode.git#v0.18.1"] }
 ```
 
-On OpenCode **v2**, use `cli.json`. v2 support is unreleased; this example pins the tested PR commit, not the v1-only `v0.18.1` release:
+On OpenCode **v2**, use `cli.json` and pin `v0.19.0`. v2 support is experimental; the v1-only `v0.18.1` release does not work on v2:
 
 ```json
 {
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#d8050f765b6c2c4e7fdc700d8345c1c5752644cb"
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0"
     }
   ]
 }
