@@ -22,7 +22,12 @@ Object.assign(env, {
   XDG_STATE_HOME: join(stateRoot, "state"),
   OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({
     plugins: [{ package: root, options: { updateCheck: false, experimentalV2Leader: "ctrl+x" } }],
-    keybinds: { leader: "ctrl+x" },
+    keybinds: {
+      leader: "ctrl+x",
+      "session.child.first": ["down", "<leader>down", "<leader>j"],
+      "composer.subagent.up": ["up", "h", "k"],
+      "composer.subagent.down": ["down", "j", "l"],
+    },
   }),
 });
 

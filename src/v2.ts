@@ -199,7 +199,10 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
     },
     state: {
       session: {
-        get: (sessionID: string) => ({ parentID: context.data.session.root(sessionID) }),
+        get: (sessionID: string) => {
+          const rootID = context.data.session.root(sessionID);
+          return { parentID: rootID === sessionID ? undefined : rootID };
+        },
         question: (sessionID: string) =>
           members(sessionID).flatMap((id) => context.data.session.form.list(id, context.location) ?? []),
         permission: (sessionID: string) =>

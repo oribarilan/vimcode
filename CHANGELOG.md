@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [0.19.1] — 2026-10-04
+
+### Changed
+
+- Added Vim-style subagent-navigation aliases to `just dev` and `just dev2` alongside the arrow bindings for manual checks.
+
+### Fixed
+
+- Remapped navigation keys now reach OpenCode in read-only child-session views without changing the Vim mode ([#79](https://github.com/oribarilan/vimcode/issues/79)).
+- Corrected v2 root-session metadata so root prompts continue receiving Vim commands.
+- Declared the OpenTUI keymap dev dependency so navigation regression tests run from clean installs.
+
 ## [0.19.0] — 2026-10-02
 
 ### Added
@@ -369,7 +381,8 @@ First release. Modal editing for the OpenCode prompt.
 
 > `g` fires immediately as buffer-home instead of waiting for `gg`. The `yy` line tracker drifts on clicks and arrow keys. Visual mode and text objects aren't feasible without cursor position access.
 
-[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/oribarilan/vimcode/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/oribarilan/vimcode/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/oribarilan/vimcode/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/oribarilan/vimcode/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/oribarilan/vimcode/compare/v0.17.1...v0.18.0
