@@ -22,7 +22,7 @@ vimcode is a TUI plugin for [OpenCode](https://opencode.ai). Before working on i
 - **Leader key is handled entirely within the keymap's `dispatchLayers()`.** There is no separate `useKeyboard` handler for it. `registerTimedLeader` registers a token; `dispatchLayers()` matches it; `getPendingSequence()` exposes the state. Calling `ctx.consume()` in a `key` intercept sets `event.propagationStopped`, which the keymap checks after each intercept — if set, it skips `dispatchLayers()` entirely. In insert mode, printable leaders are consumed and inserted as text; non-printable leaders (ctrl+x, etc.) are not consumed, so they fall through to `dispatchLayers()` and trigger OpenCode's leader bindings.
 - **`api.tuiConfig.keybinds`** gives access to OpenCode's resolved keybind config. `api.tuiConfig.keybinds.get("leader")?.[0]?.key` returns the configured leader key. Used by `resolveLeader()` to auto-detect the leader without requiring a separate plugin option.
 - **SolidJS/JSX still does not work in cache-installed plugins.** Last reproduced on 2026-09-08 with OpenCode 1.18.21 using an npm-source tarball. A plain `.ts` entry and its TUI hook loaded, but importing a `.tsx` module with `/** @jsxImportSource @opentui/solid */` failed with `Cannot find module '@opentui/solid/jsx-dev-runtime'`. The Solid transform excludes files under `node_modules`; the runtime prescan therefore cannot see the JSX-generated import before Bun resolves it. OpenCode 1.18.25 has identical relevant runtime code and also pins OpenTUI 0.4.5. OpenTUI 0.5.9 retains the exclusion. Until upstream changes this path, avoid JSX and `solid-js` imports in distributed plugins. Use `api.ui.toast()` for mode feedback instead of slot indicators. See [#3](https://github.com/oribarilan/vimcode/issues/3).
-- **Do NOT add `solid-js`, `@opentui/solid`, or `@opentui/core` as dependencies or peerDependencies.** If they're in `package.json`, Bun installs them into the plugin's `node_modules/`, and the local `.d.ts` stubs shadow the host's runtime module intercepts. The host provides these at runtime via `ensureRuntimePluginSupport`. Keep them only in `devDependencies` (via `@opencode-ai/plugin` which pulls them in for type-checking).
+- **Do NOT add `solid-js`, `@opentui/solid`, or `@opentui/core` as dependencies or peerDependencies.** If they're in `package.json`, Bun installs them into the plugin's `node_modules/`, and the local `.d.ts` stubs shadow the host's runtime module intercepts. The host provides these at runtime via `ensureRuntimePluginSupport`. Keep host UI packages dev-only. Optional peers of `@opencode-ai/plugin` are not installed by a clean Bun install; declare test dependencies explicitly. `@opentui/keymap` is pinned in devDependencies for headless keymap tests.
 - **Test distributed plugin behavior through the package cache.** `dev-tui.json` uses `"plugin": ["."]`, which loads from the working tree and does not reproduce cache-only module resolution failures. Use an npm-source tarball spec such as `name@file:/absolute/path/package.tgz` or the real `git+https://...#ref` install form, and clear only that package's cache entry before retesting.
 
 ### Editor widget API
@@ -58,9 +58,9 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (474 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
+  index.ts       (477 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
   editor.ts      (28 lines)   Host-coordinate horizontal selection bounds, preserving native anchor
-  v2.ts          (243 lines)  Experimental v2 TUI facade (host input, commands, state, events)
+  v2.ts          (246 lines)  Experimental v2 TUI facade (host input, commands, state, events)
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
     types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
@@ -88,7 +88,8 @@ test/
     textobject.test.ts (64)   resolveTextObject dispatch seam
   integration.test.ts (662)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
   editor.test.ts     (118)   Host-coordinate boundaries and opaque selection-color forwarding
-  v2.test.ts         (369)   Experimental v2 facade contract and lifecycle tests
+  v2.test.ts         (428)   Experimental v2 facade contract and lifecycle tests
+  child-session-navigation.test.ts (267)  #79: isolated intercept and real OpenTUI keymap navigation regressions
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
   compat/                    Optional real-host Python driver and test-only TUI fixture (not packaged)
 ```
@@ -168,7 +169,7 @@ just compat-unit  # Pure checks for the optional host harness
 just compat v1 /absolute/opencode 1.18.33 /canonical/empty/output  # Isolated installed-artifact check
 ```
 
-The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin. `just dev2` runs `scripts/dev2.ts` with the tested v2 package (or an explicit binary), loads local source through the root `tui.ts` shim, and isolates on-disk settings/history under `.dev2/`. The shim/launcher are not distributed; package installs still resolve `exports["./tui"]`. Visual mode captures the focused editor on entry and re-anchors at the new editor's cursor on the next eligible key after a prompt switch; overlay keys do not change ownership. Horizontal normalization probes `editBuffer.getTextRange()` in host display-cell coordinates and uses lower `editorView` selection calls to retain the renderer's native anchor. The v2 disabled setting is per activation: external storage reconciliation applies on reload, while local `/vim` updates both controller and form guard immediately. `just compat-unit` runs in CI; live-host checks remain optional.
+The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin. `just dev2` runs `scripts/dev2.ts` with the tested v2 package (or an explicit binary), loads local source through the root `tui.ts` shim, and isolates on-disk settings/history under `.dev2/`. The shim/launcher are not distributed; package installs still resolve `exports["./tui"]`. Both dev commands retain arrow navigation and add `ctrl+x j` to open children/picker; v1 uses `h`/`l` to cycle and `k` to return, while v2 uses `h`/`k` and `j`/`l` in the Composer. Visual mode captures the focused editor on entry and re-anchors at the new editor's cursor on the next eligible key after a prompt switch; overlay keys do not change ownership. Horizontal normalization probes `editBuffer.getTextRange()` in host display-cell coordinates and uses lower `editorView` selection calls to retain the renderer's native anchor. The v2 disabled setting is per activation: external storage reconciliation applies on reload, while local `/vim` updates both controller and form guard immediately. `just compat-unit` runs in CI; live-host checks remain optional.
 
 The experimental v2 adapter uses a raw renderer key listener because v2's public keymap does not expose intercepts; see `docs/opencode-v2-poc.md` for configuration and `docs/opencode-v2-strategy.md` for tested alternatives and remaining compatibility gaps.
 

@@ -27,8 +27,8 @@ OpenCode v2 support is rolling out gradually, starting with experimental support
 
 | OpenCode version | Recommended vimcode pin | Status |
 |------------------|-------------------------|--------|
-| v1 | `v0.18.1` | Previous v1-only release. `v0.19.0` also includes v1 compatibility during the transition. |
-| v2 | `v0.19.0` | Experimental; validated on OpenCode 2.0.15 on macOS. |
+| v1 | `v0.18.1` | Previous v1-only release. Opt into `v0.19.1` for the subagent-navigation fix and shared v1/v2 updates. |
+| v2 | `v0.19.1` | Experimental; validated on OpenCode 2.0.15 on macOS. |
 
 V1 users can stay on an older pinned release instead of following the v2 rollout. We have not set a date for removing v1 support.
 
@@ -38,7 +38,7 @@ Use the instructions for your OpenCode major version. Both versions use the same
 
 ### OpenCode v1
 
-We recommend pinning `v0.18.1` for existing v1 users who want the previous v1-only behavior. To opt into the shared fixes in `v0.19.0`, change the Git ref to `v0.19.0`; revert to the older pin if you encounter a regression.
+We recommend pinning `v0.18.1` for existing v1 users who want the previous v1-only behavior. To get the subagent-navigation fix and shared updates in `v0.19.1`, change the Git ref to `v0.19.1`; revert to the older pin if you encounter a regression.
 
 Add to your `tui.json` (or `.opencode/tui.json`):
 
@@ -54,13 +54,13 @@ By default, you'll see a toast when a newer vimcode version is available. If you
 
 ### OpenCode v2 (experimental)
 
-Pin `v0.19.0` in your global `cli.json`. The older `v0.18.1` release does **not** support v2.
+Pin `v0.19.1` in your global `cli.json`. The older `v0.18.1` release does **not** support v2.
 
 ```json
 {
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0"
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.1"
     }
   ]
 }
@@ -88,7 +88,7 @@ Put `options` alongside `package` in `cli.json`:
 {
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0",
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.1",
       "options": { "updateCheck": false }
     }
   ]
@@ -115,6 +115,10 @@ In normal mode, keys are vim commands. Unrecognized keys get swallowed so you do
 ### Overlay passthrough
 
 When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question prompts, permission prompts) vimcode steps aside. All keys pass through to the overlay until it closes.
+
+### Subagent navigation
+
+Read-only child-session views pass keys to OpenCode without changing your Vim mode. On v2, the Composer also owns its navigation keys. Returning to the parent prompt preserves the mode you were using.
 
 ### Escape behavior
 
@@ -145,7 +149,7 @@ On **v2**, set both the host keybind and the plugin option in `cli.json`:
   "keybinds": { "leader": "space" },
   "plugins": [
     {
-      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.0",
+      "package": "vimcode@git+https://github.com/oribarilan/vimcode.git#v0.19.1",
       "options": { "experimentalV2Leader": "space" }
     }
   ]
