@@ -102,6 +102,10 @@ In normal mode, keys are vim commands. Unrecognized keys get swallowed so you do
 
 When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question prompts, permission prompts) vimcode steps aside. All keys pass through to the overlay until it closes.
 
+### Subagent navigation
+
+Read-only child-session views pass keys to OpenCode without changing your Vim mode. On v2, the Composer also owns its navigation keys. Returning to the parent prompt preserves the mode you were using.
+
 ### Escape behavior
 
 First Escape in insert mode switches to normal - it won't trigger OpenCode's double-escape interrupt. So canceling a running response from insert mode takes 3 escapes: one for normal, two more for the interrupt.

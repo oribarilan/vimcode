@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import plugin from "../src/index";
-import type { V2Context } from "../src/v2";
+import { createV2Facade, type V2Context } from "../src/v2";
 
 type Press = { name: string; ctrl?: boolean; shift?: boolean; eventType?: string };
 type RawPressEvent = Press & { preventDefault(): void; stopPropagation(): void };
@@ -183,6 +183,65 @@ describe("OpenCode v2 POC facade", () => {
     expect(plugin.tui).toBeFunction();
     expect(plugin.setup).toBeFunction();
   });
+
+  it("only exposes a parentID for child sessions in the shared controller contract (#79)", () => {
+    const mock = host({ updateCheck: false });
+    const { api, dispose } = createV2Facade(mock.context);
+    cleanups.push(dispose);
+    expect(api.state.session.get("root")?.parentID).toBeUndefined();
+    expect(api.state.session.get("child")?.parentID).toBe("root");
+  });
+
+  for (const vimMode of ["normal", "visual", "insert"] as const) {
+    it(`passes child-session keys through and preserves ${vimMode} mode on return (#79)`, async () => {
+      const mock = host({ updateCheck: false, startMode: vimMode === "insert" ? "insert" : "normal" });
+      mock.setRoute({ type: "session", sessionID: "root" });
+      await start(mock);
+      if (vimMode === "visual") expect(mock.press("v").stopped).toBe(true);
+
+      // A route can change before the host clears the previous prompt's focus.
+      mock.setRoute({ type: "session", sessionID: "child" });
+      for (const key of ["escape", "i", "h", "k", "l", "return", "tab"]) {
+        expect(mock.press(key)).toEqual({ prevented: false, stopped: false });
+      }
+      await Bun.sleep(20);
+      expect(mock.dispatched).toEqual([]);
+
+      mock.setRoute({ type: "session", sessionID: "root" });
+      const key = vimMode === "visual" ? "j" : vimMode === "insert" ? "return" : "h";
+      const command =
+        vimMode === "visual" ? "input.select.down" : vimMode === "insert" ? "input.newline" : "input.move.left";
+      expect(mock.press(key)).toEqual({ prevented: true, stopped: true });
+      await Bun.sleep(20);
+      expect(mock.dispatched).toEqual([command]);
+    });
+
+    it(`yields to the Composer on parent and child routes without changing ${vimMode} mode (#79)`, async () => {
+      const mock = host({ updateCheck: false, startMode: vimMode === "insert" ? "insert" : "normal" });
+      mock.setRoute({ type: "session", sessionID: "root" });
+      await start(mock);
+      if (vimMode === "visual") expect(mock.press("v").stopped).toBe(true);
+
+      mock.setMode("composer");
+      for (const sessionID of ["root", "child"]) {
+        mock.setRoute({ type: "session", sessionID });
+        for (const key of ["h", "j", "k", "l", "escape", "return", "tab"]) {
+          expect(mock.press(key)).toEqual({ prevented: false, stopped: false });
+        }
+      }
+      await Bun.sleep(20);
+      expect(mock.dispatched).toEqual([]);
+
+      mock.setRoute({ type: "session", sessionID: "root" });
+      mock.setMode("base");
+      const key = vimMode === "visual" ? "j" : vimMode === "insert" ? "return" : "h";
+      const command =
+        vimMode === "visual" ? "input.select.down" : vimMode === "insert" ? "input.newline" : "input.move.left";
+      expect(mock.press(key).stopped).toBe(true);
+      await Bun.sleep(20);
+      expect(mock.dispatched).toEqual([command]);
+    });
+  }
 
   it("consumes Escape and all unknown normal chars including Unicode before the host keymap", async () => {
     const mock = host({ updateCheck: false });

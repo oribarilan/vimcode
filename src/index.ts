@@ -353,6 +353,9 @@ const plugin = {
         const route = api.route.current;
         if (route.name === "session") {
           const sid = route.params?.sessionID;
+          // Child sessions have no editable prompt. Let host navigation own
+          // the keys without changing the mode restored in the parent (#79).
+          if (typeof sid === "string" && api.state?.session?.get?.(sid)?.parentID) return;
           if (sid && hasActivePrompts(sid)) {
             // Consume the leader key so dispatchLayers() doesn't
             // match it as a leader token, which would enter pending-

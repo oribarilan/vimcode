@@ -6,6 +6,8 @@ This branch is a **proof of concept**, not a supported vimcode release. The same
 
 Run `just dev2` from this worktree. It uses npm's package runner (`npx`) to download/cache the tested `@opencode/cli@2.0.15` release, then launches a standalone v2 instance with the local plugin. It does not replace your installed `opencode` or change `just dev`.
 
+Both `just dev` (v1) and `just dev2` (v2) include subagent-navigation aliases for manual checks, alongside the native arrow bindings. `ctrl+x j` opens the child view/picker. On v1, `h`/`l` cycles children and `k` returns to the parent. On v2, `h`/`k` moves up, `j`/`l` moves down, Enter selects a child, and Escape closes the Composer. At the first picker row, `h`/`k` also closes it. No config editing or separate test launcher is needed.
+
 Settings, credentials, cache and history are stored separately under the ignored `.dev2/` directory. Existing provider environment variables and project config still apply; otherwise connect a provider inside the dev instance. The launcher clears inherited OpenCode config overrides and fixes the dev leader to `ctrl+x`.
 
 To use an existing v2 binary instead:
@@ -57,6 +59,14 @@ The same tarball was exercised in real macOS tmux sessions on OpenCode **2.0.15*
 - Pinned Git installs at `d8050f765b6c2c4e7fdc700d8345c1c5752644cb` also passed cold and warm loading on v1.18.33/v2.0.15, with 39/48 exact-state checks and the same two known gaps. Both verified the installed source and manifest byte-for-byte against a local package reference. The existing harness was reused through a temporary configure wrapper that replaced only the install spec; the reference tarball was not the installed package. Receipts are `/private/tmp/vimcode-pr82-git-d8050f7-v1/receipt.json` and `/private/tmp/vimcode-pr82-git-d8050f7-v2/receipt.json`; the wrapper is `/private/tmp/vimcode-pr82-git-install-check.py`.
 
 Earlier parent receipts are `/private/tmp/vimcode-v2-hardening/review-fixed-v1/receipt.json` and `review-fixed-v2/receipt.json`. Both verify artifact SHA-256 `8e43ee3812ecf2baf325fcc97b4e73d6e49ea116ed719fb2e7e12dbab218f7f0`. Earlier exploratory evidence remains under `/tmp/vimcode-v2-poc-runtime/` and `/tmp/vimcode-v2-alternatives/`.
+
+## Issue #79 follow-up (2026-10-04)
+
+The child-session passthrough guard now lives once in the shared controller. The v2 facade distinguishes root sessions from children before supplying `parentID`; otherwise the shared guard would incorrectly bypass root editing. The Vim engine is unchanged. Composer passthrough already existed and is now covered explicitly for normal, visual and insert modes.
+
+Fresh installed-artifact runs passed cold and warm loading on v1.18.33 (39 checks) and v2.0.15 (48 checks), with the same inherited tab-offset and snapshot-redo known gaps and no failures. Receipts: `/private/tmp/vimcode-79-dual-v1-live/receipt.json` and `/private/tmp/vimcode-79-dual-v2-live/receipt.json`.
+
+A separate real v2 navigation smoke passed nine checks using synthetic child sessions, remapped Composer keys, and exact route/editor snapshots. It verified `h`/`l` picker movement, `k` returning to the parent without `i`, and normal editing afterward. This used v2's `composer.subagent.up` (`h`, `k`), `composer.subagent.down` (`l`) and `composer.subagent.select` (`return`), not v1's sibling-cycle config names. The temporary fixture/driver is outside the checkout; receipt: `/private/tmp/vimcode-79-dual-v2-navigation-corrected/receipt.json`.
 
 ## Before claiming support
 

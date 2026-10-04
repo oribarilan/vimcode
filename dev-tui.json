@@ -1,6 +1,10 @@
 {
   "plugin": ["."],
   "keybinds": {
-    "leader": "ctrl+x"
+    "leader": "ctrl+x",
+    "session_child_first": "<leader>down,<leader>j",
+    "session_parent": "up,k",
+    "session_child_cycle": "right,l",
+    "session_child_cycle_reverse": "left,h"
   }
 }

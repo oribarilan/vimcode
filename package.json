@@ -30,6 +30,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.15",
     "@opencode-ai/plugin": "^1.15.4",
+    "@opentui/keymap": "0.5.10",
     "tsx": "^4.22.1"
   }
 }

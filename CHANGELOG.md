@@ -18,13 +18,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 - Document Git installation, options, and custom leader settings separately for OpenCode v1 and experimental v2.
 - Corrected contributor paths for the split Vim engine and documented CI's compatibility-harness checks.
+- `just dev` and `just dev2` include Vim-style subagent-navigation aliases alongside the arrow bindings for manual checks.
 
 ### Fixed
 
+- Read-only child sessions now yield navigation keys without changing Vim modes through the shared v1/v2 controller; the v2 adapter no longer reports root sessions as children ([#79](https://github.com/oribarilan/vimcode/issues/79)).
 - Visual `h`/`l` now selects through the cursor in both tested hosts, including backward motions, empty buffers and EOF/EOL boundaries, without resetting the native anchor for subsequent word or line motions. Visual mode re-anchors at the new prompt's cursor when the focused editor changes.
 - The v2 form leader guard and Vim controller now share a per-activation disabled setting; external TUI toggles take effect on reload, local `/vim` toggles take effect immediately.
 - Compatibility checks ignore user tmux configuration, reject JSONC project-config ancestors, and poll boundedly for asynchronous form/permission completion, retaining the last server response in receipts.
 - Selection normalization no longer requires an installed `@opentui/core` type dependency; host-owned selection colors are forwarded unchanged.
+- Navigation regression tests declare their OpenTUI keymap dev dependency, so clean CI installs no longer rely on locally installed optional peers.
 
 ## [0.18.1] — 2026-09-11
 
