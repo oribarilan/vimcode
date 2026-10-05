@@ -114,7 +114,15 @@ In normal mode, keys are vim commands. Unrecognized keys get swallowed so you do
 
 ### Overlay passthrough
 
-When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question prompts, permission prompts) vimcode steps aside. All keys pass through to the overlay until it closes.
+When OpenCode shows its own UI (command palette, `/sessions`, the `@` file picker, question choices, permission prompts) vimcode steps aside. Those controls keep their native keybindings.
+
+### Question answers
+
+On both OpenCode v1 and v2, a question's **Type your own answer** editor starts in insert mode with a line cursor. Escape switches to normal without closing the editor; motions, operators, text objects, visual mode and undo work on the answer. `i` returns to insert. A further Escape in normal mode reaches OpenCode's cancel handler, which can discard an unsubmitted draft on v1.
+
+Enter, Ctrl+Enter and Tab keep OpenCode's native question behavior, rather than vimcode's main-prompt submit/newline bindings. Each answer editor has its own Vim mode, pending commands, yank register and undo snapshots; returning to the main prompt restores its previous state. This also applies to child-session questions. `p` pastes the answer's own yank register, and empty-answer `j`/`k` never loads prompt history.
+
+`:` still opens the command palette, which owns its keys until it closes. Timeline and conversation-navigation Vim shortcuts are inactive while editing an answer. Question choices and confirmation screens remain host-controlled.
 
 ### Subagent navigation
 

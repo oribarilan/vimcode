@@ -1,5 +1,5 @@
 """Exact-buffer scenarios for the installed OpenCode TUI package."""
-from driver import atomic_json, capture, command, keys, normal, read_json, record, save, seed, send, snapshot, tmux, wait_for
+from driver import atomic_json, capture, command, compare_state, keys, normal, read_json, record, save, seed, send, snapshot, tmux, wait_for
 
 
 def run_core(ctx):
@@ -149,20 +149,52 @@ def run_v2_prompts(ctx):
     wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "root form")
     for ch in "hello world":
         send(ctx, ch)
-    record(ctx, "root-form-space", {"text": "hello world", "mode": "form"})
+    record(ctx, "root-form-space", {"text": "hello world", "mode": "form", "editorStatus": "ANSWER",
+           "cursorStyle": {"style": "line", "blinking": True}})
+    send(ctx, "Escape", False)
+    record(ctx, "root-form-escape-normal", {"text": "hello world", "offset": 10, "mode": "form",
+           "cursorStyle": {"style": "block", "blinking": True}})
+    keys(ctx, "hx")
+    record(ctx, "root-form-normal-delete", {"text": "hello word", "offset": 9, "mode": "form"})
+    keys(ctx, "il")
+    record(ctx, "root-form-insert-correction", {"text": "hello world", "offset": 10,
+           "cursorStyle": {"style": "line", "blinking": True}})
     send(ctx, "Enter", False)
     send(ctx, "Enter", False)
     completed_command(ctx, "formState", lambda result:
                       result.get("state") == {"status": "answered", "answer": {"answer": "hello world"}})
+    command(ctx, "form")
+    wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "burst-edit form")
+    send(ctx, "burst draft")
+    send(ctx, "Escape", False)
+    record(ctx, "root-form-before-burst", {"text": "burst draft", "offset": 10, "mode": "form"})
+    # One terminal write: no timer turn may separate the edit from Enter.
+    tmux(ctx, "send-keys", "-t", ctx["pane"], "-l", "x\r")
+    wait_for(lambda: snapshot(ctx), lambda value: value.get("editorStatus") != "ANSWER", "burst answer committed")
+    if command(ctx, "formState").get("state", {}).get("status") == "pending":
+        send(ctx, "Enter", False)
+    expected = {"state": {"status": "answered", "answer": {"answer": "burst draf"}}}
+    actual = completed_command(ctx, "formState", lambda result: result.get("state") == expected["state"])
+    ctx["report"]["checks"].append(compare_state("root-form-burst-submit", actual, expected))
+    save(ctx)
     command(ctx, "childForm")
     wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "child form")
     for ch in "child words":
         send(ctx, ch)
-    record(ctx, "child-form-space", {"text": "child words", "mode": "form"})
+    record(ctx, "child-form-space", {"text": "child words", "mode": "form", "editorStatus": "ANSWER",
+           "cursorStyle": {"style": "line", "blinking": True}})
+    send(ctx, "Escape", False)
+    record(ctx, "child-form-escape-normal", {"text": "child words", "offset": 10, "mode": "form",
+           "cursorStyle": {"style": "block", "blinking": True}})
+    send(ctx, "x")
+    record(ctx, "child-form-normal-delete", {"text": "child word", "offset": 10})
+    keys(ctx, "i!")
+    record(ctx, "child-form-insert-correction", {"text": "child word!", "offset": 11,
+           "cursorStyle": {"style": "line", "blinking": True}})
     send(ctx, "Enter", False)
     send(ctx, "Enter", False)
     completed_command(ctx, "formState", lambda result:
-                      result.get("state") == {"status": "answered", "answer": {"answer": "child words"}})
+                      result.get("state") == {"status": "answered", "answer": {"answer": "child word!"}})
     command(ctx, "permission")
     wait_for(lambda: capture(ctx), lambda pane: "Permission required" in pane, "pending permission")
     send(ctx, "Escape", False)
@@ -185,7 +217,8 @@ def run_v2_reload(ctx):
     wait_for(lambda: capture(ctx), lambda value: ":vim" in value, "Vim toggle command", 5)
     send(ctx, "Enter", False)
     send(ctx, "z")
-    record(ctx, "disabled-typing-passes-through", {"text": "zalpha beta gamma"})
+    record(ctx, "disabled-typing-passes-through", {"text": "zalpha beta gamma",
+           "cursorStyle": {"style": "line", "blinking": True}})
     saved = list((ctx["output"] / "state" / "opencode").rglob("plugin.vimcode.settings.json"))
     if len(saved) != 1 or read_json(saved[0]).get("disabled") is not True:
         raise AssertionError(f"Disabled state did not persist: {saved}")
