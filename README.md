@@ -288,6 +288,8 @@ On v1, vimcode registers a host key intercept. The experimental v2 adapter uses 
 3. Open issues for bugs or missing keybindings
 4. PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for dev setup and the release process.
 
+Use `just test` for the fast suite, `just test-int` for harness integration and parser helpers, and **`just test-e2e` with no arguments** for both pinned OpenCode hosts (v1 **1.18.34**, v2 **2.0.15**). Optionally select `just test-e2e v1` or `v2`. The real-PTY guard infers fresh temp outputs, prints receipt paths, and bootstraps missing matching hosts privately (network required); optional ignored `.env` binary paths avoid bootstrap. PR builds run all three suites. The latter two stay outside fast-test discovery and run locally only on demand; see [path settings, advanced overrides, and validation limits](docs/test-e2e.md).
+
 ## License
 
 MIT

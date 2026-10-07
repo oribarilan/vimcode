@@ -8,6 +8,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- Added separate PR CI guards via `just test-int` for harness integration and `just test-e2e` for cache-installed OpenCode v1/v2 E2E editing, with exact prompt checks and no-plugin controls; local runs remain on demand and outside the unit suite.
+- Added no-argument `just test-e2e` defaults for both pinned hosts, optional single-host selection, fresh temp receipts, private pinned bootstrap, and ignored path-only `.env` binary overrides; existing explicit CI paths remain supported.
+
 ## [0.19.1] — 2026-10-04
 
 ### Changed
