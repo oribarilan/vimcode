@@ -13,6 +13,16 @@ mock.module("../src/clipboard", () => ({
   },
 }));
 
+type PasteMetadata = Parameters<TuiPluginApi["renderer"]["keyInput"]["processPaste"]>[1];
+type PasteInputEvent = {
+  bytes: Uint8Array;
+  metadata?: PasteMetadata;
+  defaultPrevented: boolean;
+  propagationStopped: boolean;
+  preventDefault(): void;
+  stopPropagation(): void;
+};
+
 export function answerEditor(text = "hello world", status = "ANSWER") {
   let selection: { start: number; end: number } | undefined;
   const editor = {
@@ -89,11 +99,37 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
   registerLeader(keymap, { trigger: "space" });
   const disposals: Array<() => void> = [cleanup];
   const rawListeners: Array<(event: TestKeymapEvent) => void> = [];
+  const pasteListeners: Array<(event: PasteInputEvent) => void> = [];
+  function prependInput(event: "keypress", listener: (event: TestKeymapEvent) => void): void;
+  function prependInput(event: "paste", listener: (event: PasteInputEvent) => void): void;
+  function prependInput(
+    event: "keypress" | "paste",
+    listener: ((event: TestKeymapEvent) => void) | ((event: PasteInputEvent) => void),
+  ) {
+    if (event === "keypress") rawListeners.unshift(listener as (event: TestKeymapEvent) => void);
+    else pasteListeners.unshift(listener as (event: PasteInputEvent) => void);
+  }
+  function removeInput(event: "keypress", listener: (event: TestKeymapEvent) => void): void;
+  function removeInput(event: "paste", listener: (event: PasteInputEvent) => void): void;
+  function removeInput(
+    event: "keypress" | "paste",
+    listener: ((event: TestKeymapEvent) => void) | ((event: PasteInputEvent) => void),
+  ) {
+    if (event === "keypress") {
+      const index = rawListeners.indexOf(listener as (event: TestKeymapEvent) => void);
+      if (index >= 0) rawListeners.splice(index, 1);
+    } else {
+      const index = pasteListeners.indexOf(listener as (event: PasteInputEvent) => void);
+      if (index >= 0) pasteListeners.splice(index, 1);
+    }
+  }
   const commands: Array<{ id: string; run(): void | Promise<void> }> = [];
   const dispatched: string[] = [];
   const hostActions: string[] = [];
   const committedAnswers: string[] = [];
   const navigatedAnswers: string[] = [];
+  const paletteSubmissions: string[] = [];
+  const pasteReplays: Array<{ text: string; metadata?: PasteMetadata }> = [];
   const toasts: string[] = [];
   const events = new Map<string, (event: { properties: { sessionID: string } }) => void>();
   const main = answerEditor("main prompt", "PROMPT");
@@ -101,11 +137,16 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
     currentFocusedEditor: main as ReturnType<typeof answerEditor> | undefined,
     currentFocusedRenderable: main as object | undefined,
     keyInput: {
-      prependListener(_event: "keypress", listener: (event: TestKeymapEvent) => void) {
-        rawListeners.unshift(listener);
+      prependListener: prependInput,
+      off: removeInput,
+      processParsedKey(event: TestKeyModifierOptions & { name: string }) {
+        press(event.name, event);
+        return true;
       },
-      off(_event: "keypress", listener: (event: TestKeymapEvent) => void) {
-        rawListeners.splice(rawListeners.indexOf(listener), 1);
+      processPaste(bytes: Uint8Array, metadata?: PasteMetadata) {
+        const text = new TextDecoder().decode(bytes);
+        pasteReplays.push({ text, metadata });
+        paste(text, metadata);
       },
     },
   };
@@ -121,10 +162,16 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
         name: "command.palette.show",
         run() {
           paletteReturn = { editor: renderer.currentFocusedEditor, mode };
-          dialog = true;
-          mode = "modal";
-          focus(answerEditor("", "PALETTE"));
-          hostActions.push("palette");
+          function openPalette() {
+            dialog = true;
+            mode = "modal";
+            const input = answerEditor("", "PALETTE");
+            if (options.delayedPalette) queueMicrotask(() => focus(input));
+            else focus(input);
+            hostActions.push("palette");
+          }
+          if (options.delayedPalette) queueMicrotask(openPalette);
+          else openPalette();
         },
       },
     ],
@@ -136,6 +183,13 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
         name: "palette.input",
         run() {
           hostActions.push("palette:h");
+        },
+      },
+      {
+        name: "palette.submit",
+        run() {
+          hostActions.push("palette:submit");
+          paletteSubmissions.push(renderer.currentFocusedEditor?.plainText ?? "");
         },
       },
       {
@@ -151,6 +205,7 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
     ],
     bindings: [
       { key: "h", cmd: "palette.input" },
+      { key: "return", cmd: "palette.submit" },
       { key: "escape", cmd: "palette.close" },
     ],
   });
@@ -328,11 +383,9 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
   }
   function press(name: string, flags: TestKeyModifierOptions = {}) {
     let event = new TestKeymapEvent(name, flags);
-    if (version === "v2") {
-      for (const listener of [...rawListeners]) {
-        listener(event);
-        if (event.propagationStopped) break;
-      }
+    for (const listener of [...rawListeners]) {
+      listener(event);
+      if (event.propagationStopped) break;
     }
     if (!event.propagationStopped) event = host.press(name, flags);
     if (
@@ -347,6 +400,26 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
     }
     return event;
   }
+  function paste(text: string, metadata?: PasteMetadata) {
+    const event: PasteInputEvent = {
+      bytes: new TextEncoder().encode(text),
+      metadata,
+      defaultPrevented: false,
+      propagationStopped: false,
+      preventDefault() {
+        this.defaultPrevented = true;
+      },
+      stopPropagation() {
+        this.propagationStopped = true;
+      },
+    };
+    for (const listener of [...pasteListeners]) {
+      listener(event);
+      if (event.propagationStopped) break;
+    }
+    if (!event.propagationStopped && !event.defaultPrevented) renderer.currentFocusedEditor?.insertText(text);
+    return event;
+  }
   function dispose() {
     for (const fn of disposals.splice(0).reverse()) fn();
   }
@@ -357,11 +430,14 @@ export async function questionHost(version: "v1" | "v2", options: Record<string,
     hostActions,
     committedAnswers,
     navigatedAnswers,
+    paletteSubmissions,
+    pasteReplays,
     toasts,
     diagnostics,
     open,
     close,
     press,
+    paste,
     focus,
     dispose,
     setMode(value: string) {

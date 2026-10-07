@@ -36,6 +36,8 @@ export type V2Context = {
     keyInput: {
       prependListener(event: "keypress", handler: (key: RawKeyEvent) => void): void;
       off(event: "keypress", handler: (key: RawKeyEvent) => void): void;
+      processParsedKey?(key: RawKeyEvent): boolean;
+      processPaste?(...paste: Parameters<TuiPluginApi["renderer"]["keyInput"]["processPaste"]>): void;
     };
   };
   keymap: {

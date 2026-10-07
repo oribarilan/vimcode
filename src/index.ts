@@ -102,6 +102,72 @@ const plugin = {
       disposed = true;
     });
 
+    type HostKey = Parameters<TuiPluginApi["renderer"]["keyInput"]["processParsedKey"]>[0];
+    type HostPaste = Parameters<TuiPluginApi["renderer"]["keyInput"]["processPaste"]>;
+    type ConsumeEvent = { preventDefault(): void; stopPropagation(): void };
+    type HostKeyEvent = HostKey & ConsumeEvent;
+    type HostPasteEvent = ConsumeEvent & { bytes: HostPaste[0]; metadata?: HostPaste[1] };
+    type HostInput = { type: "key"; value: HostKey } | { type: "paste"; value: HostPaste };
+    // Local host declarations omit the inherited EventEmitter methods.
+    const keyInput = api.renderer?.keyInput as
+      | (TuiPluginApi["renderer"]["keyInput"] & {
+          prependListener(event: "keypress", listener: (key: HostKeyEvent) => void): void;
+          prependListener(event: "paste", listener: (paste: HostPasteEvent) => void): void;
+          off(event: "keypress", listener: (key: HostKeyEvent) => void): void;
+          off(event: "paste", listener: (paste: HostPasteEvent) => void): void;
+        })
+      | undefined;
+    const canReplayInput =
+      !!keyInput?.processParsedKey && !!keyInput?.processPaste && !!keyInput?.prependListener && !!keyInput?.off;
+    let paletteHandoff: { source: unknown; target?: unknown; inputs: HostInput[]; deadline: number } | undefined;
+    let paletteTimer: ReturnType<typeof setTimeout> | undefined;
+    let replayingInput = false;
+
+    function replayPaletteInput() {
+      paletteTimer = undefined;
+      const handoff = paletteHandoff;
+      if (!handoff || disposed) return;
+      const renderer = api.renderer;
+      const target = renderer?.currentFocusedEditor;
+      if (!handoff.target) {
+        if (
+          api.ui?.dialog?.open &&
+          target &&
+          target !== handoff.source &&
+          target === renderer.currentFocusedRenderable
+        ) {
+          handoff.target = target;
+        } else if (Date.now() < handoff.deadline) {
+          paletteTimer = setTimeout(replayPaletteInput, 0);
+          return;
+        } else {
+          paletteHandoff = undefined;
+          api.ui?.toast?.({ message: "Command palette did not take focus", variant: "warning", duration: 2000 });
+          return;
+        }
+      }
+      if (!api.ui?.dialog?.open || target !== handoff.target || target !== renderer.currentFocusedRenderable) {
+        paletteHandoff = undefined;
+        return;
+      }
+      const input = handoff.inputs.shift();
+      if (!input) {
+        paletteHandoff = undefined;
+        return;
+      }
+      // Reconstruct native events one per turn so dialog mounting and focus
+      // changes settle, while preserving paste metadata and fresh flags.
+      replayingInput = true;
+      try {
+        if (input.type === "key") keyInput?.processParsedKey(input.value);
+        else keyInput?.processPaste(...input.value);
+      } finally {
+        replayingInput = false;
+      }
+      if (disposed || !handoff.inputs.length || !api.ui?.dialog?.open) paletteHandoff = undefined;
+      else paletteTimer = setTimeout(replayPaletteInput, 0);
+    }
+
     function hostMode(): string | undefined {
       return (
         (api.keymap as typeof api.keymap & { mode?: { current(): string } }).mode?.current() ?? api.mode?.current?.()
@@ -199,16 +265,16 @@ const plugin = {
             : !mainPromptBlocked() && !answerContextForFocus() && !hasAnswerFocus(renderer ?? {}))
         );
       };
-      function deferEdit(run: () => void, global = false) {
-        if (!isAnswer || global) {
+      function deferAction(run: () => void) {
+        if (!isAnswer) {
           setTimeout(run, 0);
           return;
         }
-        context.deferredEdits.push(run);
+        context.deferredActions.push(run);
         setTimeout(() => {
-          const index = context.deferredEdits.indexOf(run);
+          const index = context.deferredActions.indexOf(run);
           if (index < 0) return;
-          context.deferredEdits.splice(index, 1);
+          context.deferredActions.splice(index, 1);
           run();
         }, 0);
       }
@@ -238,12 +304,15 @@ const plugin = {
               break;
             }
             const globalCommand = command === "command.palette.show";
+            if (isAnswer && globalCommand && canReplayInput) {
+              paletteHandoff = { source: editor, inputs: [], deadline: Date.now() + 1000 };
+            }
             if (
               isAnswer &&
               (command === "input.submit" || command.startsWith("prompt.") || command.startsWith("session."))
             )
               break;
-            deferEdit(() => {
+            deferAction(() => {
               if (
                 (globalCommand ? disposed : !stillOwnsEditor()) ||
                 (visualEditor &&
@@ -253,6 +322,10 @@ const plugin = {
               )
                 return;
               const dispatched = api.keymap.dispatchCommand(command);
+              if (isAnswer && globalCommand && paletteHandoff) {
+                if (dispatched?.ok === false) paletteHandoff = undefined;
+                else paletteTimer = setTimeout(replayPaletteInput, 0);
+              }
               if (
                 dispatched?.ok &&
                 visualEditor &&
@@ -266,7 +339,7 @@ const plugin = {
               ) {
                 selectVisualCharacterRange(visualEditor, visualAnchor);
               }
-            }, globalCommand);
+            });
             break;
           }
           case "mode":
@@ -295,7 +368,7 @@ const plugin = {
             break;
           case "yankSelection": {
             // Deferred so it runs after any preceding select commands
-            deferEdit(() => {
+            deferAction(() => {
               if (!stillOwnsEditor()) return;
               const text = editor?.editorView?.getSelectedText?.() ?? "";
               if (text) {
@@ -346,7 +419,7 @@ const plugin = {
                 editor.cursorOffset = undoSnapshot.cursor;
               }
             } else {
-              deferEdit(() => {
+              deferAction(() => {
                 if (stillOwnsEditor()) api.keymap.dispatchCommand("input.undo");
               });
             }
@@ -461,10 +534,11 @@ const plugin = {
 
         // If vim mode is disabled, pass all keys through unmodified.
         if (mainContext.state.disabled || disposed) return;
+        // Terminal input can contain several keys before timers run. A queued
+        // palette must transfer ownership before the following key is routed.
+        const previousAnswer = answerContextForFocus();
+        if (previousAnswer) for (const action of previousAnswer.deferredActions.splice(0)) action();
         const answer = answerContextForFocus();
-        // Terminal input can contain several keys before timers run. Apply
-        // prior edits before a new key reads the cursor or commits the answer.
-        if (answer) for (const edit of answer.deferredEdits.splice(0)) edit();
         const context = answer ?? mainContext;
         const state = context.state;
         if (hasAnswerFocus(api.renderer ?? {}) && !answer) return;
@@ -584,6 +658,28 @@ const plugin = {
       },
       { priority: 10_000 },
     );
+    if (canReplayInput && keyInput) {
+      const capturePaletteKey = (key: HostKeyEvent) => {
+        if (!paletteHandoff || replayingInput || key.eventType === "release") return;
+        key.preventDefault();
+        key.stopPropagation();
+        paletteHandoff.inputs.push({ type: "key", value: key });
+      };
+      const capturePalettePaste = (paste: HostPasteEvent) => {
+        if (!paletteHandoff || replayingInput) return;
+        paste.preventDefault();
+        paste.stopPropagation();
+        paletteHandoff.inputs.push({ type: "paste", value: [paste.bytes, paste.metadata] });
+      };
+      keyInput.prependListener("keypress", capturePaletteKey);
+      keyInput.prependListener("paste", capturePalettePaste);
+      api.lifecycle?.onDispose?.(() => {
+        keyInput.off("keypress", capturePaletteKey);
+        keyInput.off("paste", capturePalettePaste);
+        if (paletteTimer) clearTimeout(paletteTimer);
+        paletteHandoff = undefined;
+      });
+    }
   },
   async setup(context: V2Context) {
     const { api, dispose } = createV2Facade(context);

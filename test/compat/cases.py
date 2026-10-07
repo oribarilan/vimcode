@@ -163,6 +163,22 @@ def run_v2_prompts(ctx):
     send(ctx, "Enter", False)
     completed_command(ctx, "formState", lambda result:
                       result.get("state") == {"status": "answered", "answer": {"answer": "hello world"}})
+    for kind, burst in (("key", ":x"), ("paste", ":\x1b[200~x\x1b[201~")):
+        command(ctx, "form")
+        wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "palette-order form")
+        send(ctx, "hello world")
+        send(ctx, "Escape", False)
+        record(ctx, f"root-form-{kind}-before-palette", {"text": "hello world", "offset": 10, "mode": "form"})
+        tmux(ctx, "send-keys", "-t", ctx["pane"], "-l", burst)
+        wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "modal", "palette owns burst input")
+        record(ctx, f"root-form-{kind}-palette-query", {"text": "x", "mode": "modal", "editorStatus": "FILTER"})
+        send(ctx, "Escape", False)
+        record(ctx, f"root-form-{kind}-after-palette", {"text": "hello world", "offset": 10, "mode": "form",
+               "editorStatus": "ANSWER", "cursorStyle": {"style": "block", "blinking": True}})
+        send(ctx, "Enter", False)
+        send(ctx, "Enter", False)
+        completed_command(ctx, "formState", lambda result:
+                          result.get("state") == {"status": "answered", "answer": {"answer": "hello world"}})
     command(ctx, "form")
     wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "burst-edit form")
     send(ctx, "burst draft")

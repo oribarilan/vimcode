@@ -3,6 +3,13 @@ import { answerEditor, clipboardWrites, questionHost } from "./question-answer-s
 
 const disposals: Array<() => void> = [];
 const flush = () => Bun.sleep(5);
+async function waitFor(check: () => boolean) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (check()) return;
+    await Bun.sleep(5);
+  }
+  throw new Error("Timed out waiting for palette key delivery");
+}
 afterEach(async () => {
   await flush();
   for (const dispose of disposals.splice(0)) dispose();
@@ -146,8 +153,28 @@ for (const version of ["v1", "v2"] as const) {
       mock.press("i");
       mock.press("w");
       expect(answer.plainText).toBe(" world");
+      mock.close();
+      mock.press("u");
+      expect(mock.main.plainText).toBe("main prompt");
+      expect(answer.plainText).toBe(" world");
+      mock.open(answer);
       mock.press("u");
       expect(answer.plainText).toBe("hello world");
+      expect(mock.main.plainText).toBe("main prompt");
+    });
+    it("cannot borrow a main snapshot when the answer has no undo snapshots", async () => {
+      const mock = await setup({ startMode: "normal" });
+      mock.main.cursorOffset = 0;
+      mock.press("d");
+      mock.press("i");
+      mock.press("w");
+      const answer = mock.open();
+      mock.press("escape");
+      mock.press("u");
+      await flush();
+      expect(mock.dispatched).toContain("input.undo");
+      expect(answer.plainText).toBe("hello world");
+      expect(mock.main.plainText).toBe(" prompt");
       mock.close();
       mock.press("u");
       expect(mock.main.plainText).toBe("main prompt");
@@ -310,6 +337,90 @@ for (const version of ["v1", "v2"] as const) {
       expect(answer.cursorOffset).toBe(9);
       expect(mock.main.plainText).toBe("main prompt");
     });
+    for (const delayedPalette of [false, true]) {
+      for (const priorEdit of [false, true]) {
+        it(`orders a ${delayedPalette ? "delayed" : "queued"} palette before following keys${priorEdit ? " after a prior edit" : ""}`, async () => {
+          const mock = await setup({ delayedPalette });
+          const answer = mock.open();
+          mock.press("escape");
+          if (priorEdit) mock.press("x");
+          mock.press(":");
+          mock.press("x");
+          mock.press("return");
+          await waitFor(() => mock.hostActions.includes("palette:submit"));
+          expect(mock.committedAnswers).toEqual([]);
+          expect(mock.hostActions).toEqual(["palette", "palette:submit"]);
+          expect(mock.paletteSubmissions).toEqual(["x"]);
+          expect(mock.dispatched).toEqual([...(priorEdit ? ["input.delete"] : []), "command.palette.show"]);
+          expect(answer.plainText).toBe(priorEdit ? "hello worl" : "hello world");
+          expect(mock.renderer.currentFocusedEditor?.traits.status).toBe("PALETTE");
+          expect(mock.renderer.currentFocusedEditor?.plainText).toBe("x");
+          mock.press("escape");
+          await waitFor(() => mock.renderer.currentFocusedEditor === answer);
+          mock.press("h");
+          await flush();
+          expect(answer.cursorOffset).toBe(9);
+        });
+      }
+    }
+    it("orders native paste with keys during delayed palette focus", async () => {
+      const mock = await setup({ delayedPalette: true });
+      const answer = mock.open();
+      const metadata = { kind: "text" as const, mimeType: "text/plain" };
+      mock.press("escape");
+      mock.press(":");
+      mock.press("a");
+      const paste = mock.paste("x", metadata);
+      mock.press("b");
+      mock.press("return");
+      expect(paste.defaultPrevented).toBe(true);
+      await waitFor(() => mock.hostActions.includes("palette:submit"));
+      expect(mock.paletteSubmissions).toEqual(["axb"]);
+      expect(mock.pasteReplays).toEqual([{ text: "x", metadata }]);
+      expect(mock.committedAnswers).toEqual([]);
+      expect(answer.plainText).toBe("hello world");
+    });
+    it("does not replay buffered paste into an answer after the palette closes", async () => {
+      const mock = await setup({ delayedPalette: true });
+      const answer = mock.open();
+      mock.press("escape");
+      mock.press(":");
+      mock.press("x");
+      mock.press("escape");
+      const paste = mock.paste("y");
+      expect(paste.defaultPrevented).toBe(true);
+      await waitFor(() => mock.renderer.currentFocusedEditor === answer && mock.hostActions.includes("palette"));
+      await flush();
+      expect(mock.pasteReplays).toEqual([]);
+      expect(answer.plainText).toBe("hello world");
+    });
+    it("does not replay buffered Enter into an answer after the palette closes", async () => {
+      const mock = await setup({ delayedPalette: true });
+      const answer = mock.open();
+      mock.press("escape");
+      mock.press(":");
+      mock.press("x");
+      mock.press("escape");
+      mock.press("return");
+      await waitFor(() => mock.renderer.currentFocusedEditor === answer && mock.hostActions.includes("palette"));
+      await flush();
+      expect(mock.committedAnswers).toEqual([]);
+      expect(mock.paletteSubmissions).toEqual([]);
+      expect(answer.plainText).toBe("hello world");
+    });
+    it("drops buffered palette keys on disposal", async () => {
+      const mock = await setup({ delayedPalette: true });
+      const answer = mock.open();
+      mock.press("escape");
+      mock.press(":");
+      mock.press("x");
+      mock.press("return");
+      mock.dispose();
+      await flush();
+      expect(mock.hostActions).toEqual([]);
+      expect(mock.dispatched).toEqual([]);
+      expect(answer.plainText).toBe("hello world");
+    });
     it("does not drop a queued global palette command just because focus changes", async () => {
       const mock = await setup();
       mock.open();
@@ -395,13 +506,27 @@ for (const version of ["v1", "v2"] as const) {
       mock.press("escape");
       expect(mock.hostActions).toEqual(["cancel"]);
       await mock.toggle();
-      mock.open();
-      expect(mock.press("escape").propagationStopped).toBe(true);
-      await mock.toggle();
-      await mock.toggle();
       const answer = mock.open();
+      expect(mock.press("escape").propagationStopped).toBe(true);
+      mock.press("g");
+      mock.press("g");
+      mock.press("d");
+      mock.press("i");
+      mock.press("w");
+      expect(answer.plainText).toBe(" world");
+      mock.press("2");
+      mock.press("d");
+      await mock.toggle();
+      await mock.toggle();
+      expect(mock.renderer.currentFocusedEditor).toBe(answer);
       mock.press("z");
-      expect(answer.plainText.endsWith("z")).toBe(true);
+      expect(answer.plainText).toBe("z world");
+      mock.dispatched.length = 0;
+      mock.press("escape");
+      mock.press("u");
+      await flush();
+      expect(mock.dispatched).toEqual(["input.undo"]);
+      expect(answer.plainText).toBe("z world");
     });
     it("requires actual focused-renderable ownership", async () => {
       const mock = await setup();
