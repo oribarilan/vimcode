@@ -2,6 +2,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 type Editor = {
   id?: string;
+  traits?: { status?: string };
   plainText: string;
   cursorOffset: number;
   visualCursor?: { logicalRow: number; logicalCol: number; offset: number };
@@ -163,6 +164,7 @@ function observe(
       cursorStyle: editor?.cursorStyle ?? null,
       keypressListeners: renderer.keyInput?.listeners("keypress").length ?? null,
       editorId: editor?.id ?? null,
+      editorStatus: editor?.traits?.status ?? null,
       focusedId: renderer.currentFocusedRenderable?.id ?? null,
       mode: mode(),
       route: route(),

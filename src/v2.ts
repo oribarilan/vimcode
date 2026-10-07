@@ -1,4 +1,5 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
+import { hasAnswerFocus } from "./editing";
 import { findMatchingLeader, leaderChar } from "./leader";
 import type { KeyEvent } from "./vim";
 
@@ -35,6 +36,8 @@ export type V2Context = {
     keyInput: {
       prependListener(event: "keypress", handler: (key: RawKeyEvent) => void): void;
       off(event: "keypress", handler: (key: RawKeyEvent) => void): void;
+      processParsedKey?(key: RawKeyEvent): boolean;
+      processPaste?(...paste: Parameters<TuiPluginApi["renderer"]["keyInput"]["processPaste"]>): void;
     };
   };
   keymap: {
@@ -157,7 +160,8 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
           if (!editor || editor !== context.renderer.currentFocusedRenderable) return;
           // v2's leader token also matches inside textual forms. Insert its
           // character without running Vim commands against the form's input.
-          if (mode === "form" && !effectiveDisabled) {
+          const answer = mode === "form" && hasAnswerFocus(context.renderer);
+          if (mode === "form" && !answer && !effectiveDisabled) {
             const leader = findMatchingLeader(event, leaders);
             const character = leader && leaderChar(leader);
             if (character && editor.insertText) {
@@ -167,7 +171,7 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
             }
             return;
           }
-          if (mode !== "base" && mode !== "autocomplete") return;
+          if (mode !== "base" && mode !== "autocomplete" && !answer) return;
           handler({
             event,
             consume: () => {
@@ -187,7 +191,7 @@ export function createV2Facade(context: V2Context): { api: TuiPluginApi; dispose
       dialog: {
         get open() {
           const mode = context.keymap.mode.current();
-          return mode !== "base" && mode !== "autocomplete";
+          return mode !== "base" && mode !== "autocomplete" && !(mode === "form" && hasAnswerFocus(context.renderer));
         },
       },
     },

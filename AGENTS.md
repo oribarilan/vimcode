@@ -58,9 +58,10 @@ This API surface makes text objects (`ciw`, `di"`), direct cursor manipulation, 
 
 ```
 src/
-  index.ts       (477 lines)  Dual v1 tui/v2 setup entry: intercept registration, action application
+  index.ts       (702 lines)  Dual v1 tui/v2 setup entry: intercepts, answer ownership, action application
   editor.ts      (28 lines)   Host-coordinate horizontal selection bounds, preserving native anchor
-  v2.ts          (246 lines)  Experimental v2 TUI facade (host input, commands, state, events)
+  editing.ts     (28 lines)   Editor-local Vim contexts and shared ANSWER focus trait check
+  v2.ts          (250 lines)  Experimental v2 TUI facade (host input, commands, state, events)
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
     types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
@@ -90,6 +91,8 @@ test/
   editor.test.ts     (118)   Host-coordinate boundaries and opaque selection-color forwarding
   v2.test.ts         (428)   Experimental v2 facade contract and lifecycle tests
   child-session-navigation.test.ts (267)  #79: isolated intercept and real OpenTUI keymap navigation regressions
+  question-answer.test.ts (591)  #78: common v1/v2 answer editing and host-key ownership regressions
+  question-answer-support.ts (464)  Typed focused editor fixture with real OpenTUI keymap dispatch
   leader.test.ts (125 lines)  Unit tests for leader key matching functions
   compat/                    Optional real-host Python driver and test-only TUI fixture (not packaged)
 ```
@@ -170,6 +173,8 @@ just compat v1 /absolute/opencode 1.18.33 /canonical/empty/output  # Isolated in
 ```
 
 The `dev-tui.json` config is picked up only by `just dev`. Running `opencode` normally in this directory does not load the plugin. `just dev2` runs `scripts/dev2.ts` with the tested v2 package (or an explicit binary), loads local source through the root `tui.ts` shim, and isolates on-disk settings/history under `.dev2/`. The shim/launcher are not distributed; package installs still resolve `exports["./tui"]`. Both dev commands retain arrow navigation and add `ctrl+x j` to open children/picker; v1 uses `h`/`l` to cycle and `k` to return, while v2 uses `h`/`k` and `j`/`l` in the Composer. Visual mode captures the focused editor on entry and re-anchors at the new editor's cursor on the next eligible key after a prompt switch; overlay keys do not change ownership. Horizontal normalization probes `editBuffer.getTextRange()` in host display-cell coordinates and uses lower `editorView` selection calls to retain the renderer's native anchor. The v2 disabled setting is per activation: external storage reconciliation applies on reload, while local `/vim` updates both controller and form guard immediately. `just compat-unit` runs in CI; live-host checks remain optional.
+
+Question answer editing uses the shared controller on both hosts: require the focused editor's `traits.status === "ANSWER"` plus active question/form ownership, never a renderable id or an arbitrary textarea. Each answer editor has its own Vim state, snapshots, visual owner and leader sequence; the main prompt's context is suspended intact. Enter/Ctrl+Enter/Tab remain host-owned. Deferred editor actions validate focus, route, question ownership and disposal. Pending answer actions, including `:` palette transitions, drain in input order before the next key's keyboard ownership is resolved. Global palette actions still survive editor focus changes. During asynchronous palette mounting, keys and paste wait for the dialog's focused editor and are reconstructed through `keyInput.processParsedKey()`/`processPaste()`, one per turn; focus loss, closure or disposal drops remaining buffered input. Disabling Vim restores the owned editor's line cursor without styling unrelated overlays. v2 still protects printable leaders in non-answer textual forms without interpreting their other keys as Vim commands.
 
 The experimental v2 adapter uses a raw renderer key listener because v2's public keymap does not expose intercepts; see `docs/opencode-v2-poc.md` for configuration and `docs/opencode-v2-strategy.md` for tested alternatives and remaining compatibility gaps.
 
