@@ -6,10 +6,15 @@
 just install     # install deps
 just dev         # launch OpenCode v1 with the plugin loaded
 just dev2        # launch pinned v2 with local source and separate .dev2/ state
-just check       # run lint + tests
+just check       # run lint + existing fast tests
+just test        # existing fast suite
+just test-int    # on-demand harness integration checks (including launcher)
+just test-e2e    # both pinned hosts; inferred private binaries/temp outputs
 ```
 
 Running `opencode` directly in this directory won't load the plugin. `just dev` sets `OPENCODE_TUI_CONFIG=dev-tui.json`. `just dev2` uses npm's package runner (`npx`) for OpenCode 2.0.15 and keeps its on-disk settings/history separate under `.dev2/`. To use an existing v2 binary, run `just dev2 /absolute/path/to/opencode-v2` or set `OPENCODE_V2_BIN`. See [the v2 POC notes](docs/opencode-v2-poc.md#local-development).
+
+`just test-e2e` runs v1@1.18.34 and v2@2.0.15; add `v1` or `v2` to select one. It prints fresh canonical temp receipt paths and may download/install the pinned hosts privately. Optional ignored `.env` path keys `VIMCODE_E2E_V1_BIN` / `VIMCODE_E2E_V2_BIN` use existing binaries; process settings win, CI ignores the file, and unknown keys are not forwarded. The advanced `HOST BINARY VERSION OUTPUT` form remains available. See [the runner settings and validation limits](docs/test-e2e.md) before using overrides (Linux runtime remains pending).
 
 ## Adding a keybinding
 
@@ -39,7 +44,7 @@ Types match commit prefixes: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`.
 1. Create a branch: `git checkout -b feat/your-feature`
 2. Make changes, run `just check` locally. It must pass with zero errors and zero warnings.
 3. Push and open a PR against `main`.
-4. CI runs `just check` and `just compat-unit`. Warnings are treated as errors; both checks must pass. Live-host compatibility checks remain manual.
+4. CI runs `just check` and `just compat-unit`, plus `just test-int` for harness integration and `just test-e2e` for product E2E on pinned OpenCode v1/v2. Warnings and guard failures fail the build. Locally these guards run only on demand; the existing Python/tmux live-host compatibility harness remains manual. See [the guard commands and limits](docs/test-e2e.md). An owner must configure the new check names as required after their first successful Actions run.
 5. PRs are squash-merged. The PR title becomes the commit message on `main`.
 
 ## Commit messages
