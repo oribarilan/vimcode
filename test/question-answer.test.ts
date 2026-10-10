@@ -108,6 +108,36 @@ for (const version of ["v1", "v2"] as const) {
       expect(answer.plainText).toBe("hello wor!ld");
       expect(answer.cursorOffset).toBe(10);
     });
+    it("applies queued append movement before native paste", async () => {
+      const mock = await setup();
+      const answer = mock.open();
+      const metadata = { kind: "text" as const, mimeType: "text/plain" };
+      mock.press("escape");
+      mock.press("a");
+      const paste = mock.paste("X", metadata);
+      expect(paste.defaultPrevented).toBe(false);
+      expect(paste.propagationStopped).toBe(false);
+      expect(answer.plainText).toBe("hello worldX");
+      expect(answer.cursorOffset).toBe(12);
+      await flush();
+      expect(answer.plainText).toBe("hello worldX");
+      expect(answer.cursorOffset).toBe(12);
+      expect(mock.dispatched).toEqual(["input.move.right"]);
+      expect(mock.pasteReplays).toEqual([]);
+    });
+    it("does not drain a previous answer's actions when paste goes to the main prompt", async () => {
+      const mock = await setup();
+      const answer = mock.open();
+      mock.press("escape");
+      mock.press("a");
+      mock.close();
+      mock.paste("X");
+      await flush();
+      expect(mock.dispatched).not.toContain("input.move.right");
+      expect(answer.plainText).toBe("hello world");
+      expect(answer.cursorOffset).toBe(10);
+      expect(mock.main.plainText).toBe("main promptX");
+    });
     it("restores a line cursor when Vim is disabled from normal mode", async () => {
       const mock = await setup({ startMode: "normal" });
       await Bun.sleep(120);

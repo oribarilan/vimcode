@@ -25,6 +25,14 @@ check:
 compat host binary version output:
     python3 test/compat/run.py --host "{{host}}" --binary "{{binary}}" --expect-version "{{version}}" --output "{{output}}"
 
+# Harness integration checks and parser helpers; local runs are on demand.
+test-int:
+    bun --env-file=/dev/null run test:int
+
+# Both pinned hosts by default; optionally select one or supply all explicit paths.
+test-e2e host="" binary="" version="" output="":
+    bun --env-file=/dev/null run test:e2e "{{host}}" "{{binary}}" "{{version}}" "{{output}}"
+
 # Pure comparison checks for the optional real-host harness.
 compat-unit:
     python3 -B -m unittest discover -s test/compat -p 'test_*.py'

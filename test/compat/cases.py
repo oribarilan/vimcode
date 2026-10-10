@@ -193,6 +193,19 @@ def run_v2_prompts(ctx):
     actual = completed_command(ctx, "formState", lambda result: result.get("state") == expected["state"])
     ctx["report"]["checks"].append(compare_state("root-form-burst-submit", actual, expected))
     save(ctx)
+    command(ctx, "form")
+    wait_for(lambda: snapshot(ctx), lambda value: value.get("editorStatus") == "ANSWER", "paste-order answer")
+    send(ctx, "hello world")
+    send(ctx, "Escape", False)
+    record(ctx, "root-form-before-append-paste", {"text": "hello world", "offset": 10, "mode": "form"})
+    # Native paste bypasses key dispatch; it must still follow the append motion.
+    tmux(ctx, "send-keys", "-t", ctx["pane"], "-l", "a\x1b[200~X\x1b[201~")
+    wait_for(lambda: snapshot(ctx), lambda value: "X" in (value.get("text") or ""), "answer paste delivered")
+    record(ctx, "root-form-append-paste-burst", {"text": "hello worldX", "offset": 12, "mode": "form"})
+    send(ctx, "Enter", False)
+    send(ctx, "Enter", False)
+    completed_command(ctx, "formState", lambda result:
+                      result.get("state") == {"status": "answered", "answer": {"answer": "hello worldX"}})
     command(ctx, "childForm")
     wait_for(lambda: snapshot(ctx), lambda value: value["mode"] == "form", "child form")
     for ch in "child words":

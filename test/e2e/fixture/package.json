@@ -1,0 +1,8 @@
+{
+  "name": "vimcode-e2e-question-fixture",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tui": "./tui.ts"
+  }
+}

@@ -6,3 +6,6 @@ dist/
 .assets/
 package-lock.json
 bun.lock
+.env
+.env.*
+!.env.template

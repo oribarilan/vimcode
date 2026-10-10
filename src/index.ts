@@ -666,6 +666,11 @@ const plugin = {
         paletteHandoff.inputs.push({ type: "key", value: key });
       };
       const capturePalettePaste = (paste: HostPasteEvent) => {
+        // Native paste bypasses the key intercept, so settle answer motions first.
+        if (!replayingInput && !disposed) {
+          const answer = answerContextForFocus();
+          if (answer) for (const action of answer.deferredActions.splice(0)) action();
+        }
         if (!paletteHandoff || replayingInput) return;
         paste.preventDefault();
         paste.stopPropagation();
