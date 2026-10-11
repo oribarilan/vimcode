@@ -18,6 +18,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 - Custom question answers now support Vim editing on both OpenCode v1 and v2, starting in insert mode with isolated mode/undo state and preserving native answer submission, choice navigation and permissions ([#78](https://github.com/oribarilan/vimcode/issues/78)).
 - Native paste in question answers now waits for queued Vim motions, preventing insertion at the previous cursor position.
+- E2E startup failures retain the native exit status and current-scenario host error log instead of only reporting a closed readiness stream.
 
 ## [0.19.1] — 2026-10-04
 

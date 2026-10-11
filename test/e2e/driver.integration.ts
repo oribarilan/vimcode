@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bounded, closeDriver, ownDriver } from "./driver";
@@ -18,23 +18,40 @@ import {
 if (!["darwin", "linux"].includes(process.platform))
   throw new Error("Harness integration process checks require macOS or Linux");
 
-function fixture(mode: "ready-stall" | "shutdown-stall" | "launch-stall" | "abort" | "send-stall") {
+function fixture(mode: "ready-stall" | "shutdown-stall" | "launch-stall" | "abort" | "send-stall" | "startup-exit") {
   const directory = mkdtempSync(join(realpathSync(tmpdir()), "vimcode-driver-probe-"));
   const binaryPath = join(directory, "driver");
   writeFileSync(
     binaryPath,
     `#!${process.execPath}
 import { spawn } from "node:child_process";
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 process.on("SIGTERM", () => {});
 setInterval(() => {}, 1000);
+let launchedHost;
 if (${JSON.stringify(mode)} !== "ready-stall") {
   console.log(JSON.stringify({ type: "hello", protocolVersion: 2 }));
   createInterface({ input: process.stdin }).on("line", line => {
     const request = JSON.parse(line);
     appendFileSync(${JSON.stringify(join(directory, "requests.txt"))}, request.method + "\\n");
     const result = value => console.log(JSON.stringify({ type: "result", id: request.id, result: value }));
+    if (${JSON.stringify(mode)} === "startup-exit" && request.method !== "launch") {
+      if (request.method === "capture") result({ reason: "exited", shot: {
+        text: "Standalone server exited before reporting readiness", frame: { cursor: null }
+      }});
+      else if (request.method === "status") result({ state: "exited", exit: { code: 1, signal: null, success: false } });
+      else if (request.method === "recording") result({ bytes: [] });
+      else if (request.method === "stop") {
+        if (launchedHost?.exitCode === null) {
+          launchedHost.once("exit", () => result(null));
+          launchedHost.kill("SIGKILL");
+        } else result(null);
+      } else if (request.method === "shutdown") {
+        result(null);
+        setImmediate(() => process.exit(0));
+      }
+    }
     if (${JSON.stringify(mode)} === "send-stall" && request.method !== "launch") {
       if (request.method === "capture") result({ reason: "idle", shot: {
         text: "  ┃\\n  ┃  Ask\\n  ┃\\n  ┃  Build · No provider selected Connect a provider\\n  ╹▀▀▀▀▀",
@@ -46,7 +63,12 @@ if (${JSON.stringify(mode)} !== "ready-stall") {
     }
     if (request.method === "launch") {
       const host = spawn(${JSON.stringify(process.execPath)}, ["-e", "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { detached: true, stdio: "ignore" });
+      launchedHost = host;
       writeFileSync(${JSON.stringify(join(directory, "host.pid"))}, String(host.pid));
+      if (${JSON.stringify(mode)} === "startup-exit") {
+        mkdirSync(${JSON.stringify(join(directory, "opencode/log"))}, { recursive: true });
+        appendFileSync(${JSON.stringify(join(directory, "opencode/log/opencode.log"))}, "level=ERROR message=synthetic-startup-cause\\n");
+      }
       if (${JSON.stringify(mode)} === "abort") console.log("invalid-json");
       else if (${JSON.stringify(mode)} !== "launch-stall") console.log(JSON.stringify({ type: "result", id: request.id, result: null }));
     }
@@ -159,6 +181,60 @@ for (const send of ["type", "press", "write"] as const) {
     }
   }, 20_000);
 }
+
+it("retains native startup exit status and current-run error logs without retrying or entering the test", async () => {
+  const probe = fixture("startup-exit");
+  mkdirSync(join(probe.directory, "opencode/log"), { recursive: true });
+  writeFileSync(join(probe.directory, "opencode/log/opencode.log"), "level=ERROR message=previous-scenario\n");
+  const run: HostRun = {
+    output: probe.directory,
+    env: { HOME: probe.directory, XDG_DATA_HOME: probe.directory, PATH: "/usr/bin:/bin" },
+    receipt: {
+      host: "v2",
+      binary: "unused",
+      version: "2.0.15",
+      platform: process.platform,
+      terminalControl: "1.2.1",
+      driverBinary: probe.binaryPath,
+      negativeControl: false,
+      checks: [],
+      cleanupErrors: [],
+    },
+  };
+  let entered = false;
+  try {
+    await expect(
+      scenario(run, "startup-exit", async () => {
+        entered = true;
+      }),
+    ).rejects.toThrow("OpenCode capture ended with exited");
+    expect(entered).toBe(false);
+    expect(run.receipt.cleanupErrors).toEqual([]);
+    expect(run.receipt.checks[0]).toEqual({
+      name: "startup-exit",
+      status: "fail",
+      error: "OpenCode capture ended with exited",
+    });
+    expect(run.receipt.providersDisabled).toBeUndefined();
+    expect(JSON.parse(readFileSync(join(probe.directory, "startup-exit/failure-status.json"), "utf8"))).toEqual({
+      state: "exited",
+      exit: { code: 1, signal: null, success: false },
+    });
+    expect(readFileSync(join(probe.directory, "startup-exit/host-error.log"), "utf8")).toBe(
+      "level=ERROR message=synthetic-startup-cause\n",
+    );
+    expect(
+      readFileSync(join(probe.directory, "requests.txt"), "utf8")
+        .split("\n")
+        .filter((method) => method === "launch"),
+    ).toHaveLength(1);
+    expect(present(Number(readFileSync(join(probe.directory, "host.pid"), "utf8")))).toBe(false);
+    expect(run.driver).toBeUndefined();
+  } finally {
+    if (run.driver && !run.driver.reaped) await closeDriver(run.driver, 1_000).catch(() => {});
+    rmSync(probe.directory, { recursive: true, force: true });
+  }
+}, 20_000);
 
 it("retains unresolved ownership across cleanup retries and blocks later launches", async () => {
   const probe = fixture("shutdown-stall");

@@ -58,6 +58,7 @@ export type HostRun = {
   driver?: OwnedDriver;
   session?: Session;
   scenario?: string;
+  hostLogOffset?: number;
 };
 
 export function saveReceipt(run: HostRun) {
@@ -261,6 +262,8 @@ export async function startScenario(run: HostRun, name: string) {
   if (run.driver) throw new Error("Previous owned driver has not been reaped; refusing another launch");
   run.scenario = name;
   mkdirSync(join(run.output, name));
+  const hostLog = join(run.env.XDG_DATA_HOME ?? run.output, "opencode/log/opencode.log");
+  run.hostLogOffset = existsSync(hostLog) ? statSync(hostLog).size : 0;
   // The driver also gets no provider credentials; launch independently rejects inheritance.
   const driverEnv = Object.fromEntries(Object.keys(process.env).map((key) => [key, undefined]));
   Object.assign(driverEnv, run.env);
@@ -278,7 +281,10 @@ export async function startScenario(run: HostRun, name: string) {
       host: "opentui",
       viewport: { cols: 110, rows: 34 },
       inheritEnv: false,
-      env: run.env,
+      env: {
+        ...run.env,
+        ...(run.receipt.host === "v2" ? { OPENCODE_LOG_LEVEL: "error" } : {}),
+      },
       record: "on-failure",
     }),
     "host launch",
@@ -419,9 +425,29 @@ export async function saveFailure(run: HostRun, error: unknown) {
       writeFileSync(join(directory, "failure.txt"), capture.text);
       writeFileSync(join(directory, "failure.json"), JSON.stringify(capture, null, 2));
       await bounded(run.session.saveRecording(join(directory, "failure.termctrl")), "failure recording");
+      if (capture.reason === "exited" || capture.reason === "outputclosed") {
+        const { state, exit } = await bounded(run.session.status(), "failure exit status");
+        writeFileSync(join(directory, "failure-status.json"), JSON.stringify({ state, exit }, null, 2));
+      }
     } catch (captureError) {
       run.receipt.checks.push({ name: "failure-evidence", status: "fail", error: String(captureError) });
     }
+  }
+  try {
+    const hostLog = join(run.env.XDG_DATA_HOME ?? run.output, "opencode/log/opencode.log");
+    if (existsSync(hostLog)) {
+      const log = readFileSync(hostLog);
+      const offset = (run.hostLogOffset ?? 0) <= log.length ? (run.hostLogOffset ?? 0) : 0;
+      const errors = log
+        .subarray(offset)
+        .toString()
+        .split("\n")
+        .filter((line) => /level=(?:ERROR|FATAL)|"level":"(?:error|fatal)"/.test(line));
+      if (errors.length)
+        writeFileSync(join(run.output, run.scenario ?? "", "host-error.log"), `${errors.join("\n")}\n`);
+    }
+  } catch (logError) {
+    run.receipt.checks.push({ name: "failure-evidence", status: "fail", error: String(logError) });
   }
   saveReceipt(run);
 }

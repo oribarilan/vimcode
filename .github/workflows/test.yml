@@ -177,5 +177,6 @@ jobs:
             ${{ runner.temp }}/vimcode-e2e-${{ matrix.host }}/answer-paste/*.txt
             ${{ runner.temp }}/vimcode-e2e-${{ matrix.host }}/answer-paste/failure.json
             ${{ runner.temp }}/vimcode-e2e-${{ matrix.host }}/answer-paste/failure.termctrl
+            ${{ runner.temp }}/vimcode-e2e-${{ matrix.host }}/*/failure-status.json
           if-no-files-found: warn
           retention-days: 7
