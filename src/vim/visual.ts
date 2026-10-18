@@ -1,6 +1,6 @@
 import { consumeCount, enterInsert, enterNormal, exitVisual } from "./state";
 import { SELECT_MOTIONS } from "./tables";
-import { endOfWord } from "./text";
+import { endOfWord, wordMotion } from "./text";
 import { resolveTextObject } from "./textobject";
 import type { Action, HandlerResult, KeyEvent, PromptAccess, VimState } from "./types";
 import { PASS, pushN } from "./util";
@@ -76,6 +76,14 @@ export function handleVisualKey(state: VimState, key: string, ev: KeyEvent, prom
   if (key === "e") {
     const n = consumeCount(state);
     const target = endOfWord(prompt.getPlainText(), prompt.getCursorOffset(), n);
+    actions.push({ type: "selectRange", start: state.visualAnchor ?? 0, end: target });
+    actions.push({ type: "cursorTo", offset: target });
+    return { consume: true, actions };
+  }
+
+  if (key === "W" || key === "B" || key === "E") {
+    const n = consumeCount(state);
+    const target = wordMotion(prompt.getPlainText(), prompt.getCursorOffset(), key, n);
     actions.push({ type: "selectRange", start: state.visualAnchor ?? 0, end: target });
     actions.push({ type: "cursorTo", offset: target });
     return { consume: true, actions };

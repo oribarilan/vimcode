@@ -147,6 +147,144 @@ describe("handleNormalKey — e motion", () => {
   });
 });
 
+// ── handleNormalKey — W motion ─────────────────────────────
+
+describe("handleNormalKey — W motion", () => {
+  const wPrompt: PromptAccess = {
+    getLine: (n) => ["hello.world next.word", "second line"][n] ?? "",
+    getLineCount: () => 2,
+    getCursorLine: () => 0,
+    getCursorOffset: () => 0,
+    getPlainText: () => "hello.world next.word\nsecond line",
+  };
+
+  it("W returns cursorTo at start of next WORD", () => {
+    const r = handleNormalKey(state, "W", ev("W"), wPrompt);
+    expect(r.consume).toBe(true);
+    expect(cursorTos(r.actions)).toEqual([12]);
+  });
+
+  it("2W returns cursorTo at start of second next WORD", () => {
+    handleNormalKey(state, "2", ev("2"), wPrompt);
+    const r = handleNormalKey(state, "W", ev("W"), wPrompt);
+    expect(cursorTos(r.actions)).toEqual([22]);
+  });
+
+  it("dW deletes from cursor to start of next WORD", () => {
+    handleNormalKey(state, "d", ev("d"), wPrompt);
+    const r = handleNormalKey(state, "W", ev("W"), wPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 11 }]);
+    expect(state.mode).toBe("normal");
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
+  });
+
+  it("cW deletes from cursor to start of next WORD and enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), wPrompt);
+    const r = handleNormalKey(state, "W", ev("W"), wPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 11 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("yW yanks from cursor to start of next WORD", () => {
+    handleNormalKey(state, "y", ev("y"), wPrompt);
+    const r = handleNormalKey(state, "W", ev("W"), wPrompt);
+    expect(state.yankRegister).toBe("hello.world ");
+    expect(r.actions.some((a) => a.type === "yank" && a.text === "hello.world ")).toBe(true);
+  });
+});
+
+// ── handleNormalKey — B motion ─────────────────────────────
+
+describe("handleNormalKey — B motion", () => {
+  const bPrompt: PromptAccess = {
+    getLine: (n) => ["hello.world next.word", "second line"][n] ?? "",
+    getLineCount: () => 2,
+    getCursorLine: () => 0,
+    getCursorOffset: () => 16,
+    getPlainText: () => "hello.world next.word\nsecond line",
+  };
+
+  it("B returns cursorTo at start of current WORD", () => {
+    const r = handleNormalKey(state, "B", ev("B"), bPrompt);
+    expect(r.consume).toBe(true);
+    expect(cursorTos(r.actions)).toEqual([12]);
+  });
+
+  it("2B returns cursorTo at start of previous WORD", () => {
+    handleNormalKey(state, "2", ev("2"), bPrompt);
+    const r = handleNormalKey(state, "B", ev("B"), bPrompt);
+    expect(cursorTos(r.actions)).toEqual([0]);
+  });
+
+  it("dB deletes from start of WORD to cursor", () => {
+    handleNormalKey(state, "d", ev("d"), bPrompt);
+    const r = handleNormalKey(state, "B", ev("B"), bPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 12, end: 15 }]);
+    expect(state.mode).toBe("normal");
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
+  });
+
+  it("cB deletes from start of WORD to cursor and enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), bPrompt);
+    const r = handleNormalKey(state, "B", ev("B"), bPrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 12, end: 15 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("yB yanks from start of WORD to cursor", () => {
+    handleNormalKey(state, "y", ev("y"), bPrompt);
+    const r = handleNormalKey(state, "B", ev("B"), bPrompt);
+    expect(state.yankRegister).toBe("next");
+    expect(r.actions.some((a) => a.type === "yank" && a.text === "next")).toBe(true);
+  });
+});
+
+// ── handleNormalKey — E motion ─────────────────────────────
+
+describe("handleNormalKey — E motion", () => {
+  const ePrompt: PromptAccess = {
+    getLine: (n) => ["hello.world next.word", "second line"][n] ?? "",
+    getLineCount: () => 2,
+    getCursorLine: () => 0,
+    getCursorOffset: () => 0,
+    getPlainText: () => "hello.world next.word\nsecond line",
+  };
+
+  it("E returns cursorTo at end of current WORD", () => {
+    const r = handleNormalKey(state, "E", ev("E"), ePrompt);
+    expect(r.consume).toBe(true);
+    expect(cursorTos(r.actions)).toEqual([10]);
+  });
+
+  it("2E returns cursorTo at end of second WORD", () => {
+    handleNormalKey(state, "2", ev("2"), ePrompt);
+    const r = handleNormalKey(state, "E", ev("E"), ePrompt);
+    expect(cursorTos(r.actions)).toEqual([20]);
+  });
+
+  it("dE deletes from cursor to end of WORD", () => {
+    handleNormalKey(state, "d", ev("d"), ePrompt);
+    const r = handleNormalKey(state, "E", ev("E"), ePrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 10 }]);
+    expect(state.mode).toBe("normal");
+    expect(saveUndoSnapshots(r.actions)).toHaveLength(1);
+  });
+
+  it("cE deletes from cursor to end of WORD and enters insert", () => {
+    handleNormalKey(state, "c", ev("c"), ePrompt);
+    const r = handleNormalKey(state, "E", ev("E"), ePrompt);
+    expect(deleteRanges(r.actions)).toEqual([{ start: 0, end: 10 }]);
+    expect(state.mode).toBe("insert");
+  });
+
+  it("yE yanks from cursor to end of WORD", () => {
+    handleNormalKey(state, "y", ev("y"), ePrompt);
+    const r = handleNormalKey(state, "E", ev("E"), ePrompt);
+    expect(state.yankRegister).toBe("hello.world");
+    expect(r.actions.some((a) => a.type === "yank" && a.text === "hello.world")).toBe(true);
+  });
+});
+
 // ── handleNormalKey — text objects ─────────────────────────
 
 describe("handleNormalKey — text objects", () => {

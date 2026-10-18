@@ -8,6 +8,7 @@ import {
   currentLineRange,
   isWhitespace,
   quoteRange,
+  wordMotion,
   wordRange,
 } from "../../src/vim/text";
 
@@ -61,6 +62,165 @@ describe("endOfWord", () => {
 
   it("clamps at end of text", () => {
     expect(endOfWord("hi", 0, 5)).toBe(1);
+  });
+});
+
+// ── wordMotion — W ─────────────────────────────────────────
+
+describe("wordMotion — W", () => {
+  it("from start of WORD, moves to start of next WORD", () => {
+    expect(wordMotion("hello world", 0, "W")).toBe(6);
+  });
+
+  it("from middle of WORD, moves to start of next WORD", () => {
+    expect(wordMotion("hello world", 2, "W")).toBe(6);
+  });
+
+  it("from end of WORD, moves to start of next WORD", () => {
+    expect(wordMotion("hello world", 4, "W")).toBe(6);
+  });
+
+  it("from whitespace, skips to start of next WORD", () => {
+    expect(wordMotion("hello world", 5, "W")).toBe(6);
+  });
+
+  it("does not stop at punctuation boundary", () => {
+    expect(wordMotion("hello.world next", 0, "W")).toBe(12);
+  });
+
+  it("from punctuation, moves to start of next WORD", () => {
+    expect(wordMotion("hello...world next", 5, "W")).toBe(14);
+  });
+
+  it("from end of punctuation, moves to start of next WORD", () => {
+    expect(wordMotion("a.b next", 1, "W")).toBe(4);
+  });
+
+  it("at end of text, stays put", () => {
+    expect(wordMotion("hello", 5, "W")).toBe(5);
+  });
+
+  it("handles count > 1", () => {
+    expect(wordMotion("one two three", 0, "W", 2)).toBe(8);
+  });
+
+  it("handles multiple whitespace", () => {
+    expect(wordMotion("hello   world", 0, "W")).toBe(8);
+    expect(wordMotion("hello   world", 4, "W")).toBe(8);
+  });
+
+  it("handles newlines as whitespace", () => {
+    expect(wordMotion("hello\nworld", 4, "W")).toBe(6);
+  });
+
+  it("clamps at end of text", () => {
+    expect(wordMotion("hi", 0, "W", 5)).toBe(2);
+  });
+});
+
+// ── wordMotion — B ─────────────────────────────────────────
+
+describe("wordMotion — B", () => {
+  it("from start of WORD, moves to start of previous WORD", () => {
+    expect(wordMotion("hello world", 6, "B")).toBe(0);
+  });
+
+  it("from middle of WORD, moves to first char", () => {
+    expect(wordMotion("hello world", 8, "B")).toBe(6);
+  });
+
+  it("from end of WORD, moves to first char", () => {
+    expect(wordMotion("hello world", 10, "B")).toBe(6);
+  });
+
+  it("from whitespace, skips to start of previous WORD", () => {
+    expect(wordMotion("hello world", 5, "B")).toBe(0);
+  });
+
+  it("does not stop at punctuation boundary", () => {
+    expect(wordMotion("hello.world", 10, "B")).toBe(0);
+  });
+
+  it("from punctuation, moves to start of WORD", () => {
+    expect(wordMotion("hello...world", 5, "B")).toBe(0);
+  });
+
+  it("from end of punctuation, moves to start of WORD", () => {
+    expect(wordMotion("a.b", 1, "B")).toBe(0);
+  });
+
+  it("at start of text, stays put", () => {
+    expect(wordMotion("hello", 0, "B")).toBe(0);
+  });
+
+  it("handles count > 1", () => {
+    expect(wordMotion("one two three", 8, "B", 2)).toBe(0);
+  });
+
+  it("handles multiple whitespace", () => {
+    expect(wordMotion("hello   world", 10, "B")).toBe(8);
+    expect(wordMotion("hello   world", 8, "B")).toBe(0);
+  });
+
+  it("handles newlines as whitespace", () => {
+    expect(wordMotion("hello\nworld", 6, "B")).toBe(0);
+  });
+
+  it("clamps at start of text", () => {
+    expect(wordMotion("hi", 1, "B", 5)).toBe(0);
+  });
+});
+
+// ── wordMotion — E ─────────────────────────────────────────
+
+describe("wordMotion — E", () => {
+  it("from start of WORD, moves to last char", () => {
+    expect(wordMotion("hello world", 0, "E")).toBe(4);
+  });
+
+  it("from middle of WORD, moves to last char", () => {
+    expect(wordMotion("hello world", 2, "E")).toBe(4);
+  });
+
+  it("from end of WORD, moves to end of next WORD", () => {
+    expect(wordMotion("hello world", 4, "E")).toBe(10);
+  });
+
+  it("from whitespace, skips to end of next WORD", () => {
+    expect(wordMotion("hello world", 5, "E")).toBe(10);
+  });
+
+  it("does not stop at punctuation boundary", () => {
+    expect(wordMotion("hello.world", 0, "E")).toBe(10);
+  });
+
+  it("from punctuation, moves to end of WORD", () => {
+    expect(wordMotion("hello...world", 5, "E")).toBe(12);
+  });
+
+  it("from end of punctuation, moves to end of WORD", () => {
+    expect(wordMotion("a.b", 1, "E")).toBe(2);
+  });
+
+  it("at end of text, stays put", () => {
+    expect(wordMotion("hello", 4, "E")).toBe(4);
+  });
+
+  it("handles count > 1", () => {
+    expect(wordMotion("one two three", 0, "E", 2)).toBe(6);
+  });
+
+  it("handles multiple whitespace", () => {
+    expect(wordMotion("hello   world", 0, "E")).toBe(4);
+    expect(wordMotion("hello   world", 4, "E")).toBe(12);
+  });
+
+  it("handles newlines as whitespace", () => {
+    expect(wordMotion("hello\nworld", 4, "E")).toBe(10);
+  });
+
+  it("clamps at end of text", () => {
+    expect(wordMotion("hi", 0, "E", 5)).toBe(1);
   });
 });
 

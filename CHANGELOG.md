@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+
+- Added `B`, `W`, and `E` WORD motions with counts, visual selections, and delete/change/yank operators, keeping punctuation and URLs together.
+
 ## [0.19.2] — 2026-10-14
 
 ### Added

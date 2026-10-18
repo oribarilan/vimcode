@@ -182,6 +182,7 @@ The plugin checks GitHub for new versions once per day on startup. No other netw
 |-----|--------|
 | `h` `j` `k` `l` | Left, down, up, right |
 | `w` `b` `e` | Word forward, backward, end of word |
+| `W` `B` `E` | WORD forward, backward, end of WORD |
 | `0` `^` | Line start |
 | `$` | Line end |
 | `gg` | Buffer start |
@@ -202,6 +203,9 @@ When the input is empty, `j`/`k` scroll through prompt history instead of moving
 | `dw` `cw` `yw` | To next word |
 | `db` `cb` `yb` | To previous word |
 | `de` `ce` `ye` | To end of word |
+| `dW` `cW` `yW` | To next WORD |
+| `dB` `cB` `yB` | To previous WORD |
+| `dE` `cE` `yE` | To end of WORD |
 | `d$` `c$` `y$` | To end of line |
 | `d0` `c0` `y0` | To start of line |
 | `d^` `c^` `y^` | To start of line |
@@ -253,7 +257,7 @@ Press `v` in normal mode to enter character-wise visual mode. Press `V` to selec
 | `V` | Select current line |
 | `Escape` `v` | Exit visual mode |
 
-All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `0` `$` `G`, with counts.
+All normal-mode motions work for extending the selection: `h` `j` `k` `l` `w` `b` `e` `W` `B` `E` `0` `$` `G`, with counts.
 
 ### Other
 

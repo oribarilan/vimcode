@@ -13,6 +13,11 @@ beforeEach(() => {
 // ── handleVisualKey — motions ──────────────────────────────
 
 describe("handleVisualKey — motions", () => {
+  const wordPrompt: PromptAccess = {
+    ...mockPrompt,
+    getPlainText: () => "hello.world next.word last.word",
+  };
+
   beforeEach(() => {
     state.mode = "visual";
   });
@@ -91,6 +96,95 @@ describe("handleVisualKey — motions", () => {
     const r2 = handleVisualKey(state, "e", ev("e"), prompt);
     expect(selectRanges(r2.actions)).toEqual([{ start: 0, end: 10 }]);
     expect(cursorTos(r2.actions)).toEqual([10]);
+  });
+
+  it("W selects from visual anchor to start of next WORD", () => {
+    state.visualAnchor = 0;
+    const r = handleVisualKey(state, "W", ev("W"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 12 }]);
+  });
+
+  it("2W selects from visual anchor to start of second next WORD", () => {
+    state.visualAnchor = 0;
+    handleVisualKey(state, "2", ev("2"), wordPrompt);
+    const r = handleVisualKey(state, "W", ev("W"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 22 }]);
+  });
+
+  it("W pressed twice extends selection to successive WORD starts", () => {
+    state.visualAnchor = 0;
+    let cursorPos = 0;
+    const prompt: PromptAccess = { ...wordPrompt, getCursorOffset: () => cursorPos };
+
+    const r1 = handleVisualKey(state, "W", ev("W"), prompt);
+    expect(selectRanges(r1.actions)).toEqual([{ start: 0, end: 12 }]);
+    expect(cursorTos(r1.actions)).toEqual([12]);
+
+    cursorPos = cursorTos(r1.actions)[0];
+
+    const r2 = handleVisualKey(state, "W", ev("W"), prompt);
+    expect(selectRanges(r2.actions)).toEqual([{ start: 0, end: 22 }]);
+    expect(cursorTos(r2.actions)).toEqual([22]);
+  });
+
+  it("B selects from visual anchor to start of WORD", () => {
+    state.visualAnchor = 20;
+    const prompt: PromptAccess = { ...wordPrompt, getCursorOffset: () => 20 };
+    const r = handleVisualKey(state, "B", ev("B"), prompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 20, end: 12 }]);
+  });
+
+  it("2B selects from visual anchor to start of previous WORD", () => {
+    state.visualAnchor = 20;
+    const prompt: PromptAccess = { ...wordPrompt, getCursorOffset: () => 20 };
+    handleVisualKey(state, "2", ev("2"), prompt);
+    const r = handleVisualKey(state, "B", ev("B"), prompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 20, end: 0 }]);
+  });
+
+  it("B pressed twice extends selection to successive WORD starts", () => {
+    state.visualAnchor = 20;
+    let cursorPos = 20;
+    const prompt: PromptAccess = { ...wordPrompt, getCursorOffset: () => cursorPos };
+
+    const r1 = handleVisualKey(state, "B", ev("B"), prompt);
+    expect(selectRanges(r1.actions)).toEqual([{ start: 20, end: 12 }]);
+    expect(cursorTos(r1.actions)).toEqual([12]);
+
+    cursorPos = cursorTos(r1.actions)[0];
+
+    const r2 = handleVisualKey(state, "B", ev("B"), prompt);
+    expect(selectRanges(r2.actions)).toEqual([{ start: 20, end: 0 }]);
+    expect(cursorTos(r2.actions)).toEqual([0]);
+  });
+
+  it("E selects from visual anchor to end of WORD", () => {
+    state.visualAnchor = 0;
+    const r = handleVisualKey(state, "E", ev("E"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 10 }]);
+  });
+
+  it("2E selects from visual anchor to end of 2nd WORD", () => {
+    state.visualAnchor = 0;
+    handleVisualKey(state, "2", ev("2"), wordPrompt);
+    const r = handleVisualKey(state, "E", ev("E"), wordPrompt);
+    expect(selectRanges(r.actions)).toEqual([{ start: 0, end: 20 }]);
+  });
+
+  it("E pressed twice extends selection to successive WORD ends", () => {
+    state.visualAnchor = 0;
+    let cursorPos = 0;
+    const prompt: PromptAccess = { ...wordPrompt, getCursorOffset: () => cursorPos };
+
+    const r1 = handleVisualKey(state, "E", ev("E"), prompt);
+    expect(selectRanges(r1.actions)).toEqual([{ start: 0, end: 10 }]);
+    expect(cursorTos(r1.actions)).toEqual([10]);
+
+    cursorPos = cursorTos(r1.actions)[0];
+
+    const r2 = handleVisualKey(state, "E", ev("E"), prompt);
+    expect(selectRanges(r2.actions)).toEqual([{ start: 0, end: 20 }]);
+    expect(cursorTos(r2.actions)).toEqual([20]);
   });
 
   it("g sets pending goto, no actions", () => {

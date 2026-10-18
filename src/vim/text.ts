@@ -1,5 +1,32 @@
 import type { Range } from "./types";
 
+export function wordMotion(text: string, offset: number, motion: "W" | "B" | "E", count = 1): number {
+  const len = text.length;
+  if (len === 0) return 0;
+  let pos = offset;
+  for (let step = 0; step < count; step++) {
+    switch (motion) {
+      case "W":
+        while (pos < len && !isWhitespace(text[pos])) pos++;
+        while (pos < len && isWhitespace(text[pos])) pos++;
+        break;
+      case "B":
+        if (pos > 0) pos--;
+        while (pos > 0 && isWhitespace(text[pos])) pos--;
+        while (pos > 0 && !isWhitespace(text[pos - 1])) pos--;
+        break;
+      case "E":
+        if (pos < len - 1 && !isWhitespace(text[pos])) pos++;
+        while (pos < len && isWhitespace(text[pos])) pos++;
+        if (pos >= len) return len - 1;
+        while (pos + 1 < len && !isWhitespace(text[pos + 1])) pos++;
+        break;
+      // `endOfWord` could be integrated as case "e" here
+    }
+  }
+  return pos;
+}
+
 export function endOfWord(text: string, offset: number, count = 1): number {
   const len = text.length;
   if (len === 0) return 0;

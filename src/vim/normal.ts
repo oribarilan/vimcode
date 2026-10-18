@@ -1,6 +1,6 @@
 import { consumeCount, enterInsert, resetPending } from "./state";
 import { DELETE_MOTION, MOTIONS, SELECT_MOTIONS } from "./tables";
-import { currentLineRange, endOfWord } from "./text";
+import { currentLineRange, endOfWord, wordMotion } from "./text";
 import { resolveTextObject } from "./textobject";
 import type { Action, HandlerResult, KeyEvent, Operator, PromptAccess, VimState } from "./types";
 import { PASS, pushN } from "./util";
@@ -187,13 +187,39 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
     return finishUndoableChange(actions);
   }
 
-  // Pending operator + e (end-of-word needs special handling)
-  if (state.pending.kind === "operator" && key === "e") {
+  // Pending operator + pure text motion
+  if (state.pending.kind === "operator" && (key === "e" || key === "W" || key === "B" || key === "E")) {
     const op = state.pending.op;
     const n = consumeCount(state);
+    const text = prompt.getPlainText();
     const offset = prompt.getCursorOffset();
-    const target = endOfWord(prompt.getPlainText(), offset, n);
-    return applyOperatorRange(state, op, prompt.getPlainText(), offset, target);
+    if (key === "e") {
+      const target = endOfWord(text, offset, n);
+      return applyOperatorRange(state, op, text, offset, target);
+    }
+
+    if (key === "W") {
+      if (offset >= text.length) {
+        resetPending(state);
+        return { consume: true, actions: [] };
+      }
+      const target = wordMotion(text, offset, key, n);
+      return applyOperatorRange(state, op, text, offset, target - 1);
+    }
+
+    if (key === "B") {
+      if (offset === 0) {
+        resetPending(state);
+        return { consume: true, actions: [] };
+      }
+      const target = wordMotion(text, offset, key, n);
+      return applyOperatorRange(state, op, text, target, offset - 1);
+    }
+
+    if (key === "E") {
+      const target = wordMotion(text, offset, key, n);
+      return applyOperatorRange(state, op, text, Math.min(offset, target), target);
+    }
   }
 
   // Pending operator + motion
@@ -248,6 +274,13 @@ export function handleNormalKey(state: VimState, key: string, ev: KeyEvent, prom
   if (key === "e") {
     const n = consumeCount(state);
     const target = endOfWord(prompt.getPlainText(), prompt.getCursorOffset(), n);
+    actions.push({ type: "cursorTo", offset: target });
+    return { consume: true, actions };
+  }
+
+  if (key === "W" || key === "B" || key === "E") {
+    const n = consumeCount(state);
+    const target = wordMotion(prompt.getPlainText(), prompt.getCursorOffset(), key, n);
     actions.push({ type: "cursorTo", offset: target });
     return { consume: true, actions };
   }

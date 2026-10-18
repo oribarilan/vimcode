@@ -65,14 +65,14 @@ src/
   vim/                        Pure vim engine (thin barrel re-exports the public surface):
     index.ts     (7 lines)    Barrel — public surface only. No export *, no internals.
     types.ts     (57 lines)   Action union, VimState, Mode, Operator, Pending, Range, KeyEvent, HandlerResult, PromptAccess
-    text.ts      (210 lines)  Pure string algorithms: charKind, endOfWord, currentLineRange, wordRange, bracketRange, quoteRange, anyBracketRange, anyQuoteRange
+    text.ts      (237 lines)  Pure string algorithms: charKind, endOfWord, wordMotion (B/W/E), currentLineRange, wordRange, bracketRange, quoteRange, anyBracketRange, anyQuoteRange
     tables.ts    (35 lines)   Keybinding maps: MOTIONS, SELECT_MOTIONS, DELETE_MOTION (engine-internal)
     textobject.ts (36 lines)  resolveTextObject — object char → inclusive Range seam (iw/aw, quote/bracket pairs, iq/ib)
     util.ts      (19 lines)   State-agnostic primitives: translateKey, PASS, pushN
     state.ts     (76 lines)   VimState lifecycle + transitions
     insert.ts    (32 lines)   handleInsertKey
-    normal.ts    (378 lines)  handleNormalKey (+ file-local finishUndoableChange, applyOperatorRange, isInputEmpty)
-    visual.ts    (104 lines)  handleVisualKey
+    normal.ts    (411 lines)  handleNormalKey (+ file-local finishUndoableChange, applyOperatorRange, isInputEmpty)
+    visual.ts    (112 lines)  handleVisualKey
   leader.ts      (73 lines)   Leader key matching: matchesKeyLike, findMatchingLeader, leaderChar
   clipboard.ts   (19 lines)   writeClipboard() — cross-platform (pbcopy/xclip/xsel/wl-copy/clip.exe)
   version.ts     (46 lines)   Version constant, GitHub update check (cached daily)
@@ -80,12 +80,12 @@ test/
   support.ts     (33 lines)   Shared assertion helpers + ev()
   fixtures.ts    (17 lines)   Prompt fixtures: mockPrompt, emptyPrompt
   vim/                        Per-module engine tests mirroring src/vim/:
-    text.test.ts     (385)    endOfWord, charKind, currentLineRange, wordRange, bracketRange, quoteRange, any* units
+    text.test.ts     (545)    endOfWord, wordMotion, charKind, currentLineRange, wordRange, bracketRange, quoteRange, any* units
     state.test.ts    (70)     createVimState, toggleVimMode
     util.test.ts     (31)     translateKey
     insert.test.ts   (92)     handleInsertKey
-    normal.test.ts   (823)    handleNormalKey branches
-    visual.test.ts   (287)    handleVisualKey branches
+    normal.test.ts   (961)    handleNormalKey branches
+    visual.test.ts   (381)    handleVisualKey branches
     textobject.test.ts (64)   resolveTextObject dispatch seam
   integration.test.ts (662)   Full pipeline: one-shot normal, plugin init, undo snapshots, version sync, prompt overlay tracking
   editor.test.ts     (118)   Host-coordinate boundaries and opaque selection-color forwarding
